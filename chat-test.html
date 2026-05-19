@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SyncSpace Chat Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h2>SyncSpace Chat</h2>
+    <input type="text" id="workspaceId" placeholder="Workspace ID">
+    <input type="text" id="userId" placeholder="User ID (from MongoDB)">
+    <button onclick="join()">Join Workspace</button>
+    <hr>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type message">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        let socket = io('http://localhost:5500');
+        let currentWorkspace = null;
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('new-message', (msg) => {
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${msg.sender.name}:</strong> ${msg.text}`;
+            document.getElementById('messages').appendChild(div);
+        });
+
+        function join() {
+            const workspaceId = document.getElementById('workspaceId').value;
+            const userId = document.getElementById('userId').value;
+            socket.emit('join-workspace', workspaceId, userId, (response) => {
+                if (response.success) {
+                    currentWorkspace = workspaceId;
+                    // Load previous messages
+                    socket.emit('load-messages', workspaceId, (msgs) => {
+                        const msgsDiv = document.getElementById('messages');
+                        msgsDiv.innerHTML = '';
+                        msgs.forEach(msg => {
+                            const div = document.createElement('div');
+                            div.innerHTML = `<strong>${msg.sender.name}:</strong> ${msg.text}`;
+                            msgsDiv.appendChild(div);
+                        });
+                    });
+                } else {
+                    alert(response.error);
+                }
+            });
+        }
+
+        function sendMessage() {
+            if (!currentWorkspace) return alert('Join a workspace first');
+            const text = document.getElementById('messageInput').value;
+            socket.emit('send-message', { workspaceId: currentWorkspace, text }, (response) => {
+                if (!response.success) alert(response.error);
+                document.getElementById('messageInput').value = '';
+            });
+        }
+    </script>
+</body>
+</html>
