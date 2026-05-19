@@ -15,7 +15,7 @@ interface DocumentEditorProps {
     title: string;
     content: string;
   };
-  onUpdate: (updated: any) => void;
+  onUpdate: (updated: { _id: string; title: string; content: string }) => void;
 }
 
 export default function DocumentEditor({ document, onUpdate }: DocumentEditorProps) {
@@ -36,27 +36,31 @@ export default function DocumentEditor({ document, onUpdate }: DocumentEditorPro
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4',
       },
     },
-    onUpdate: ({ editor }) => {
-      // Auto-save after typing stops (debounced)
-      handleAutoSave(editor.getJSON());
-    },
   });
 
-  const handleAutoSave = useCallback(
-    async (content: any) => {
+  const autoSave = useCallback(
+    async (content: unknown) => {
       setSaving(true);
       try {
         await updateDocument(document._id, { content: JSON.stringify(content) });
         setLastSaved(new Date());
         onUpdate({ ...document, content: JSON.stringify(content) });
-      } catch (err) {
+      } catch {
         toast.error('Failed to save');
       } finally {
         setSaving(false);
       }
     },
-    [document._id, onUpdate]
+    [document, onUpdate]  // ✅ document is included
   );
+
+  useEffect(() => {
+    if (!editor) return;
+    const handler = setTimeout(() => {
+      autoSave(editor.getJSON());
+    }, 3000);
+    return () => clearTimeout(handler);
+  }, [editor, autoSave]);
 
   const saveTitle = async () => {
     if (title === document.title) return;
@@ -65,20 +69,10 @@ export default function DocumentEditor({ document, onUpdate }: DocumentEditorPro
       setLastSaved(new Date());
       onUpdate({ ...document, title });
       toast.success('Title saved');
-    } catch (err) {
+    } catch {
       toast.error('Failed to save title');
     }
   };
-
-  // Debounce auto-save for content (every 3 seconds of inactivity)
-  useEffect(() => {
-    if (!editor) return;
-    const handler = setTimeout(() => {
-      if (editor.isDestroyed) return;
-      handleAutoSave(editor.getJSON());
-    }, 3000);
-    return () => clearTimeout(handler);
-  }, [editor, handleAutoSave]);
 
   return (
     <div className="flex-1 flex flex-col bg-white rounded-lg shadow p-4">
@@ -96,62 +90,16 @@ export default function DocumentEditor({ document, onUpdate }: DocumentEditorPro
         </div>
       </div>
 
-      {/* Toolbar */}
       <div className="flex flex-wrap gap-1 border-b pb-2 mb-2">
-        <button
-          onClick={() => editor?.chain().focus().toggleBold().run()}
-          className={`p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
-        >
-          Bold
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleItalic().run()}
-          className={`p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
-        >
-          Italic
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleUnderline().run()}
-          className={`p-2 rounded ${editor?.isActive('underline') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
-        >
-          Underline
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().setTextAlign('left').run()}
-          className="p-2 rounded hover:bg-gray-100"
-        >
-          Left
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().setTextAlign('center').run()}
-          className="p-2 rounded hover:bg-gray-100"
-        >
-          Center
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
-          className={`p-2 rounded ${editor?.isActive('heading', { level: 1 }) ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
-        >
-          H1
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-          className={`p-2 rounded ${editor?.isActive('heading', { level: 2 }) ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
-        >
-          H2
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleBulletList().run()}
-          className={`p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
-        >
-          Bullet List
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-          className={`p-2 rounded ${editor?.isActive('orderedList') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
-        >
-          Numbered List
-        </button>
+        <button onClick={() => editor?.chain().focus().toggleBold().run()} className={`p-2 rounded ${editor?.isActive('bold') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}>Bold</button>
+        <button onClick={() => editor?.chain().focus().toggleItalic().run()} className={`p-2 rounded ${editor?.isActive('italic') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}>Italic</button>
+        <button onClick={() => editor?.chain().focus().toggleUnderline().run()} className={`p-2 rounded ${editor?.isActive('underline') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}>Underline</button>
+        <button onClick={() => editor?.chain().focus().setTextAlign('left').run()} className="p-2 rounded hover:bg-gray-100">Left</button>
+        <button onClick={() => editor?.chain().focus().setTextAlign('center').run()} className="p-2 rounded hover:bg-gray-100">Center</button>
+        <button onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} className={`p-2 rounded ${editor?.isActive('heading', { level: 1 }) ? 'bg-gray-200' : 'hover:bg-gray-100'}`}>H1</button>
+        <button onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} className={`p-2 rounded ${editor?.isActive('heading', { level: 2 }) ? 'bg-gray-200' : 'hover:bg-gray-100'}`}>H2</button>
+        <button onClick={() => editor?.chain().focus().toggleBulletList().run()} className={`p-2 rounded ${editor?.isActive('bulletList') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}>Bullet List</button>
+        <button onClick={() => editor?.chain().focus().toggleOrderedList().run()} className={`p-2 rounded ${editor?.isActive('orderedList') ? 'bg-gray-200' : 'hover:bg-gray-100'}`}>Numbered List</button>
       </div>
 
       <EditorContent editor={editor} className="flex-1 min-h-[400px]" />

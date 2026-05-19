@@ -29,26 +29,22 @@ export default function Chat({ workspaceId }: ChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  // Connect to Socket.io server
   useEffect(() => {
     if (!user) return;
 
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5500';
-    const newSocket = io(socketUrl, {
-      transports: ['websocket'],
-    });
+    const newSocket = io(socketUrl, { transports: ['websocket'] });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
       console.log('Socket connected');
       setIsConnected(true);
-      // Join the workspace room
-      newSocket.emit('join-workspace', workspaceId, user._id, (response: any) => {
-        if (response.error) {
+      // Define response type explicitly
+      newSocket.emit('join-workspace', workspaceId, user._id, (response: { error?: string }) => {
+        if (response?.error) {
           toast.error(response.error);
         } else {
           console.log('Joined workspace room');
-          // Load previous messages
           newSocket.emit('load-messages', workspaceId, (msgs: Message[]) => {
             setMessages(msgs || []);
           });
@@ -70,15 +66,14 @@ export default function Chat({ workspaceId }: ChatProps) {
     };
   }, [workspaceId, user]);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const sendMessage = () => {
     if (!newMessage.trim() || !socket || !isConnected) return;
-    socket.emit('send-message', { workspaceId, text: newMessage }, (response: any) => {
-      if (response.error) {
+    socket.emit('send-message', { workspaceId, text: newMessage }, (response: { error?: string }) => {
+      if (response?.error) {
         toast.error(response.error);
       } else {
         setNewMessage('');
@@ -86,7 +81,7 @@ export default function Chat({ workspaceId }: ChatProps) {
     });
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -95,15 +90,12 @@ export default function Chat({ workspaceId }: ChatProps) {
 
   return (
     <div className="flex flex-col h-[70vh] bg-white rounded-lg shadow">
-      {/* Header */}
       <div className="border-b p-4 bg-gray-50 rounded-t-lg">
         <h2 className="font-semibold">Workspace Chat</h2>
         <p className="text-xs text-gray-500">
           {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
         </p>
       </div>
-
-      {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 mt-10">No messages yet. Say hello!</div>
@@ -133,8 +125,6 @@ export default function Chat({ workspaceId }: ChatProps) {
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Input area */}
       <div className="border-t p-4 bg-gray-50 rounded-b-lg">
         <div className="flex gap-2">
           <textarea
@@ -149,7 +139,7 @@ export default function Chat({ workspaceId }: ChatProps) {
           <button
             onClick={sendMessage}
             disabled={!isConnected || !newMessage.trim()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
             Send
           </button>
