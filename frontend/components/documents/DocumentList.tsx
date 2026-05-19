@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { getDocumentsByWorkspace, createDocument, deleteDocument } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -13,7 +13,7 @@ interface Document {
 
 interface DocumentListProps {
   workspaceId: string;
-  onSelectDocument: (doc: Document | null) => void;  // Allow null
+  onSelectDocument: (doc: Document | null) => void;
   selectedDocId?: string;
 }
 
@@ -23,22 +23,25 @@ export default function DocumentList({ workspaceId, onSelectDocument, selectedDo
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
 
-  // Wrap fetchDocuments in useCallback to avoid infinite re-renders
-  const fetchDocuments = useCallback(async () => {
-    try {
-      const res = await getDocumentsByWorkspace(workspaceId);
-      setDocuments(res.data);
-    } catch (_err) {
-      toast.error('Failed to load documents');
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId]);
-
-  // Now useEffect depends on fetchDocuments (stable)
   useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
+    let isMounted = true;
+    const fetchDocs = async () => {
+      try {
+        const res = await getDocumentsByWorkspace(workspaceId);
+        if (isMounted) {
+          setDocuments(res.data);
+          setLoading(false);
+        }
+      } catch {
+        if (isMounted) {
+          toast.error('Failed to load documents');
+          setLoading(false);
+        }
+      }
+    };
+    fetchDocs();
+    return () => { isMounted = false; };
+  }, [workspaceId]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return toast.error('Title required');
@@ -53,7 +56,7 @@ export default function DocumentList({ workspaceId, onSelectDocument, selectedDo
       setIsCreating(false);
       setNewTitle('');
       toast.success('Document created');
-    } catch (_err) {
+    } catch {
       toast.error('Creation failed');
     }
   };
@@ -64,9 +67,9 @@ export default function DocumentList({ workspaceId, onSelectDocument, selectedDo
       try {
         await deleteDocument(id);
         setDocuments(documents.filter(d => d._id !== id));
-        if (selectedDocId === id) onSelectDocument(null); // No more "as any"
+        if (selectedDocId === id) onSelectDocument(null);
         toast.success('Document deleted');
-      } catch (_err) {
+      } catch {
         toast.error('Delete failed');
       }
     }
