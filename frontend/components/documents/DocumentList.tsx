@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getDocumentsByWorkspace, createDocument, deleteDocument } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -13,7 +13,7 @@ interface Document {
 
 interface DocumentListProps {
   workspaceId: string;
-  onSelectDocument: (doc: Document) => void;
+  onSelectDocument: (doc: Document | null) => void;  // Allow null
   selectedDocId?: string;
 }
 
@@ -23,29 +23,29 @@ export default function DocumentList({ workspaceId, onSelectDocument, selectedDo
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
 
-  useEffect(() => {
-    if (workspaceId) {
-      fetchDocuments();
-    }
-  }, [workspaceId]);
-
-  const fetchDocuments = async () => {
+  // Wrap fetchDocuments in useCallback to avoid infinite re-renders
+  const fetchDocuments = useCallback(async () => {
     try {
       const res = await getDocumentsByWorkspace(workspaceId);
       setDocuments(res.data);
-    } catch (err) {
+    } catch (_err) {
       toast.error('Failed to load documents');
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId]);
+
+  // Now useEffect depends on fetchDocuments (stable)
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return toast.error('Title required');
     try {
       const res = await createDocument({
         title: newTitle,
-        content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] }), // empty doc
+        content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] }),
         workspaceId,
       });
       setDocuments([res.data, ...documents]);
@@ -53,7 +53,7 @@ export default function DocumentList({ workspaceId, onSelectDocument, selectedDo
       setIsCreating(false);
       setNewTitle('');
       toast.success('Document created');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Creation failed');
     }
   };
@@ -64,9 +64,9 @@ export default function DocumentList({ workspaceId, onSelectDocument, selectedDo
       try {
         await deleteDocument(id);
         setDocuments(documents.filter(d => d._id !== id));
-        if (selectedDocId === id) onSelectDocument(null as any);
+        if (selectedDocId === id) onSelectDocument(null); // No more "as any"
         toast.success('Document deleted');
-      } catch (err) {
+      } catch (_err) {
         toast.error('Delete failed');
       }
     }
