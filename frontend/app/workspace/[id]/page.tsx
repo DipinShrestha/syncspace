@@ -1,15 +1,14 @@
 'use client';
 import Chat from '@/components/chat/Chat';
 import BoardView from '@/components/board/BoardView';
-import { useEffect, useState } from 'react';          // ← only one useState
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { getWorkspaces } from '@/lib/api';
 import toast from 'react-hot-toast';
 import DocumentList from '@/components/documents/DocumentList';
 import DocumentEditor from '@/components/documents/DocumentEditor';
-// No extra import here
-
+import InviteMember from '@/components/InviteMember';
 
 interface Workspace {
   _id: string;
@@ -60,8 +59,13 @@ export default function WorkspacePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold">{workspace.name}</h1>
-          <p className="text-gray-600">{workspace.description || 'No description'}</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold">{workspace.name}</h1>
+              <p className="text-gray-600">{workspace.description || 'No description'}</p>
+            </div>
+            <InviteMember workspaceId={id as string} />
+          </div>
         </div>
       </div>
 
@@ -104,27 +108,28 @@ export default function WorkspacePage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'boards' && <BoardView workspaceId={id as string} />}
-       {activeTab === 'documents' && (
-  <div className="flex gap-4 h-[70vh]">
-    <DocumentList
-      workspaceId={id as string}
-      onSelectDocument={setSelectedDocument}
-      selectedDocId={selectedDocument?._id}
-    />
-    <div className="flex-1">
-      {selectedDocument ? (
-        <DocumentEditor
-          document={selectedDocument}
-          onUpdate={(updated) => setSelectedDocument(updated)}
-        />
-      ) : (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">
-          Select a document or create a new one
-        </div>
-      )}
-    </div>
-  </div>
-)}
+        {activeTab === 'documents' && (
+          <div className="flex gap-4 h-[70vh]">
+            <DocumentList
+              workspaceId={id as string}
+              onSelectDocument={setSelectedDocument}
+              selectedDocId={selectedDocument?._id}
+            />
+            <div className="flex-1">
+              {selectedDocument ? (
+                <DocumentEditor
+                  document={selectedDocument}
+                  onUpdate={(updated) => setSelectedDocument(updated)}
+                />
+              ) : (
+                <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">
+                  Select a document or create a new one
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {activeTab === 'chat' && <Chat workspaceId={id as string} />}
       </div>
     </div>
   );

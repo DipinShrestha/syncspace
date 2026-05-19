@@ -38,6 +38,9 @@ export const getWorkspaces = () => api.get('/workspaces');
 export const createWorkspace = (data: { name: string; description?: string }) =>
   api.post('/workspaces', data);
 
+export const inviteMember = (workspaceId: string, email: string) =>
+  api.post(`/workspaces/${workspaceId}/members`, { email });
+
 // Boards
 export const getBoardsByWorkspace = (workspaceId: string) =>
   api.get(`/boards/workspace/${workspaceId}`);
