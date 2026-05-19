@@ -11,6 +11,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Types for card data (used in addCard and updateCard)
+interface CardData {
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  labels?: string[];
+  assignedTo?: string;
+  position?: number;
+  boardId?: string;
+  targetListIndex?: number;
+  newPosition?: number;
+}
+
 // Auth
 export const register = (name: string, email: string, password: string) =>
   api.post('/auth/register', { name, email, password });
@@ -32,9 +45,9 @@ export const createBoard = (data: { title: string; workspaceId: string }) =>
   api.post('/boards', data);
 export const addList = (boardId: string, title: string) =>
   api.post(`/boards/${boardId}/lists`, { title });
-export const addCard = (boardId: string, listIndex: number, data: any) =>
+export const addCard = (boardId: string, listIndex: number, data: CardData) =>
   api.post(`/boards/${boardId}/lists/${listIndex}/cards`, data);
-export const updateCard = (cardId: string, data: any) =>
+export const updateCard = (cardId: string, data: CardData) =>
   api.put(`/cards/${cardId}`, data);
 
 // Documents
