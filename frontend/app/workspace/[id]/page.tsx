@@ -17,7 +17,8 @@ interface Workspace {
 }
 
 export default function WorkspacePage() {
-  const { id } = useParams();
+  const params = useParams();
+const id = params?.id as string;
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -57,6 +58,9 @@ export default function WorkspacePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <div style={{ background: 'red', color: 'white', padding: '10px', textAlign: 'center' }}>
+  ✅ Latest version – tabs should be below
+</div>
       {/* Header with invite button */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
