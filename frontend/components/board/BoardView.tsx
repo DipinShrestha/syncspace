@@ -290,12 +290,12 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             strategy={horizontalListSortingStrategy}
           >
             {currentBoard.lists.map((list, listIndex) => (
-             <BoardList
-  key={list._id || listIndex}
-  list={list}
-  listIndex={listIndex}
-  onAddCard={(listIdx, title) => handleAddCard(currentBoard._id, listIdx, title)}
-/>
+              <BoardList
+                key={list._id || listIndex}
+                list={list}
+                listIndex={listIndex}
+               onAddCard={(title) => handleAddCard(currentBoard._id, listIndex, title)}
+              />
             ))}
           </SortableContext>
         </div>

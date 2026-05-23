@@ -35,7 +35,7 @@ export default function DashboardPage() {
     try {
       const res = await getWorkspaces();
       setWorkspaces(res.data);
-    } catch {
+    } catch (err: any) {
       toast.error('Failed to load workspaces');
     } finally {
       setLoading(false);

@@ -16,15 +16,13 @@ const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard }) => 
   const [newCardTitle, setNewCardTitle] = useState('');
   const [isAddingCard, setIsAddingCard] = useState(false);
 
- const handleAddCard = () => {
-  alert('test');
-  console.log('Add button clicked, card title:', newCardTitle);
-  if (newCardTitle.trim()) {
-    onAddCard(listIndex, newCardTitle);
-    setNewCardTitle('');
-    setIsAddingCard(false);
-  }
-};
+  const handleAddCard = () => {
+    if (newCardTitle.trim()) {
+      onAddCard(listIndex, newCardTitle);
+      setNewCardTitle('');
+      setIsAddingCard(false);
+    }
+  };
 
   return (
     <div className="bg-gray-100 rounded-md p-3 w-80 flex-shrink-0 flex flex-col max-h-full">
@@ -54,10 +52,7 @@ const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard }) => 
             onBlur={() => setIsAddingCard(false)}
           />
           <div className="flex mt-2 space-x-2">
-            <button type="button" onClick={handleAddCard} className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700">
-  Add
-</button>
-
+            <button onClick={handleAddCard} className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700">Add</button>
             <button onClick={() => setIsAddingCard(false)} className="text-gray-500 hover:text-gray-700">Cancel</button>
           </div>
         </div>
