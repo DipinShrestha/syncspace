@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import './globals.css';
+import './globals.css';                         // ← must be present
 import { AuthProvider } from '@/context/AuthContext';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';      // ← correct import
 
 const inter = Inter({ subsets: ['latin'] });
 
