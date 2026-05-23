@@ -31,7 +31,7 @@ router.post('/:boardId/lists', protect, addList);
 router.put('/:boardId/lists/:listIndex', protect, updateList);
 router.delete('/:boardId/lists/:listIndex', protect, deleteList);
 
-// Card routes
+// Card routes (nested)
 router.post('/:boardId/lists/:listIndex/cards', protect, addCard);
 router.put('/cards/:cardId', protect, updateCard);
 router.delete('/cards/:cardId', protect, deleteCard);

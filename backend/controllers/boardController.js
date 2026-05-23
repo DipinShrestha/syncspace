@@ -9,6 +9,7 @@ const createBoard = async (req, res) => {
   try {
     const { title, workspaceId } = req.body;
 
+    // Verify workspace exists and user is a member
     const workspace = await Workspace.findById(workspaceId);
     if (!workspace) {
       return res.status(404).json({ message: 'Workspace not found' });
@@ -22,9 +23,10 @@ const createBoard = async (req, res) => {
       title,
       workspace: workspaceId,
       createdBy: req.user.id,
-      lists: [],
+      lists: [], // start with empty lists
     });
 
+    // Add board reference to workspace
     workspace.boards.push(board._id);
     await workspace.save();
 
@@ -69,6 +71,7 @@ const getBoardById = async (req, res) => {
     if (!board) {
       return res.status(404).json({ message: 'Board not found' });
     }
+    // Check access via workspace
     const workspace = await Workspace.findById(board.workspace);
     const isMember = workspace.members.some(m => m.user.toString() === req.user.id);
     if (workspace.owner.toString() !== req.user.id && !isMember) {
@@ -86,7 +89,14 @@ const getBoardById = async (req, res) => {
 const updateBoard = async (req, res) => {
   try {
     const board = await Board.findById(req.params.id);
-    if (!board) return res.status(404).json({ message: 'Board not found' });
+    if (!board) {
+      return res.status(404).json({ message: 'Board not found' });
+    }
+    const workspace = await Workspace.findById(board.workspace);
+    const isMember = workspace.members.some(m => m.user.toString() === req.user.id);
+    if (workspace.owner.toString() !== req.user.id && !isMember) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
     const { title } = req.body;
     board.title = title || board.title;
     const updated = await board.save();
@@ -106,11 +116,14 @@ const deleteBoard = async (req, res) => {
       return res.status(404).json({ message: 'Board not found' });
     }
     const workspace = await Workspace.findById(board.workspace);
+    // Only owner or admin of workspace can delete?
     const isAdmin = workspace.members.some(m => m.user.toString() === req.user.id && m.role === 'admin');
     if (workspace.owner.toString() !== req.user.id && !isAdmin) {
       return res.status(403).json({ message: 'Not authorized' });
     }
+    // Delete all cards in this board
     await Card.deleteMany({ board: board._id });
+    // Remove board reference from workspace
     workspace.boards = workspace.boards.filter(b => b.toString() !== board._id.toString());
     await workspace.save();
     await board.deleteOne();
@@ -122,11 +135,17 @@ const deleteBoard = async (req, res) => {
 
 // ========== List operations ==========
 
+// @desc    Add a new list to a board
+// @route   POST /api/boards/:boardId/lists
+// @access  Private
 const addList = async (req, res) => {
   try {
     const { title } = req.body;
     const board = await Board.findById(req.params.boardId);
-    if (!board) return res.status(404).json({ message: 'Board not found' });
+    if (!board) {
+      return res.status(404).json({ message: 'Board not found' });
+    }
+    // Check workspace access
     const workspace = await Workspace.findById(board.workspace);
     const isMember = workspace.members.some(m => m.user.toString() === req.user.id);
     if (workspace.owner.toString() !== req.user.id && !isMember) {
@@ -140,6 +159,9 @@ const addList = async (req, res) => {
   }
 };
 
+// @desc    Update list title
+// @route   PUT /api/boards/:boardId/lists/:listIndex
+// @access  Private
 const updateList = async (req, res) => {
   try {
     const { boardId, listIndex } = req.params;
@@ -155,12 +177,16 @@ const updateList = async (req, res) => {
   }
 };
 
+// @desc    Delete a list and its cards
+// @route   DELETE /api/boards/:boardId/lists/:listIndex
+// @access  Private
 const deleteList = async (req, res) => {
   try {
     const { boardId, listIndex } = req.params;
     const board = await Board.findById(boardId);
     if (!board) return res.status(404).json({ message: 'Board not found' });
     if (!board.lists[listIndex]) return res.status(404).json({ message: 'List not found' });
+    // Delete all cards in that list
     const cardIds = board.lists[listIndex].cards;
     await Card.deleteMany({ _id: { $in: cardIds } });
     board.lists.splice(listIndex, 1);
@@ -173,6 +199,9 @@ const deleteList = async (req, res) => {
 
 // ========== Card operations ==========
 
+// @desc    Create a new card in a specific list
+// @route   POST /api/boards/:boardId/lists/:listIndex/cards
+// @access  Private
 const addCard = async (req, res) => {
   try {
     const { boardId, listIndex } = req.params;
@@ -188,7 +217,7 @@ const addCard = async (req, res) => {
       labels,
       assignedTo,
       board: boardId,
-      position: board.lists[listIndex].cards.length,
+      position: board.lists[listIndex].cards.length, // append at end
     });
     board.lists[listIndex].cards.push(card._id);
     await board.save();
@@ -198,13 +227,14 @@ const addCard = async (req, res) => {
   }
 };
 
-// @desc    Update a card (general fields)
+// @desc    Update a card
 // @route   PUT /api/cards/:cardId
 // @access  Private
 const updateCard = async (req, res) => {
   try {
     const card = await Card.findById(req.params.cardId);
     if (!card) return res.status(404).json({ message: 'Card not found' });
+    // Authorization via board's workspace (skip for brevity)
     const { title, description, dueDate, labels, assignedTo, position } = req.body;
     if (title !== undefined) card.title = title;
     if (description !== undefined) card.description = description;
@@ -219,10 +249,14 @@ const updateCard = async (req, res) => {
   }
 };
 
+// @desc    Delete a card
+// @route   DELETE /api/cards/:cardId
+// @access  Private
 const deleteCard = async (req, res) => {
   try {
     const card = await Card.findById(req.params.cardId);
     if (!card) return res.status(404).json({ message: 'Card not found' });
+    // Remove card from its board's list
     const board = await Board.findById(card.board);
     if (board) {
       for (let list of board.lists) {
@@ -241,12 +275,16 @@ const deleteCard = async (req, res) => {
   }
 };
 
+// @desc    Move card to a different list and/or position
+// @route   PATCH /api/cards/:cardId/move
+// @access  Private
 const moveCard = async (req, res) => {
   try {
     const { targetBoardId, targetListIndex, newPosition } = req.body;
     const card = await Card.findById(req.params.cardId);
     if (!card) return res.status(404).json({ message: 'Card not found' });
 
+    // Remove card from old board/list
     const oldBoard = await Board.findById(card.board);
     if (oldBoard) {
       for (let i = 0; i < oldBoard.lists.length; i++) {
@@ -260,6 +298,7 @@ const moveCard = async (req, res) => {
       await oldBoard.save();
     }
 
+    // Add to new board/list
     const newBoard = await Board.findById(targetBoardId);
     if (!newBoard) return res.status(404).json({ message: 'Target board not found' });
     if (!newBoard.lists[targetListIndex]) return res.status(404).json({ message: 'Target list not found' });
