@@ -10,7 +10,6 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
@@ -45,9 +44,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   );
 
   useEffect(() => {
-    if (workspaceId) {
-      fetchBoards();
-    }
+    if (workspaceId) fetchBoards();
   }, [workspaceId]);
 
   const fetchBoards = async () => {
@@ -81,9 +78,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const handleAddList = async (boardId: string, title: string) => {
     try {
       const res = await addList(boardId, title);
-      // Create a new list object with the response data. MongoDB ID is in _id.
       const newList = { _id: res.data._id, title: res.data.title, cards: [] };
-      // Update local state
       setBoards(prev =>
         prev.map(board =>
           board._id === boardId
@@ -104,7 +99,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     try {
       const tempCardId = `temp-${Date.now()}`;
       const newCardData = { title: cardTitle, description: '', labels: [] };
-      // Optimistically update the UI
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -129,7 +123,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       }
 
       const res = await addCard(boardId, listIndex, { title: cardTitle });
-      // Replace temp card with the one from the server
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -155,7 +148,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     } catch (err) {
       toast.error('Failed to add card');
       console.error(err);
-      fetchBoards(); // Revert optimistic update by re-fetching
+      fetchBoards();
     }
   };
 
@@ -168,7 +161,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCard(null);
-
     if (!over) return;
 
     const activeId = active.id.toString();
@@ -176,7 +168,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     if (!currentBoard) return;
 
     if (activeId.includes('card-') && overId.includes('card-')) {
-      // Reorder cards in the same list
       const activeListIndex = currentBoard.lists.findIndex(list => list.cards.some(card => `card-${card._id}` === activeId));
       const overListIndex = currentBoard.lists.findIndex(list => list.cards.some(card => `card-${card._id}` === overId));
       if (activeListIndex === -1 || overListIndex === -1) return;
@@ -185,7 +176,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(card => `card-${card._id}` === overId);
 
       if (activeListIndex === overListIndex) {
-        // Same list: reorder locally and then update positions on the backend.
         const newCards = arrayMove(currentBoard.lists[activeListIndex].cards, activeCardIndex, overCardIndex);
         const updatedLists = [...currentBoard.lists];
         updatedLists[activeListIndex].cards = newCards;
@@ -193,14 +183,11 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         setCurrentBoard(updatedBoard);
         setBoards(prev => prev.map(b => b._id === currentBoard._id ? updatedBoard : b));
 
-        // Update positions on the backend (implement a batch update endpoint later).
-        // For now, we'll just update the card's position individually.
         const movedCard = newCards[overCardIndex];
         try {
           await updateCard(movedCard._id, { position: overCardIndex });
         } catch (err) { console.error("Failed to update card position", err); }
       } else {
-        // Different list: move the card to another list.
         const [cardId] = activeId.split('-');
         const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
         const updatedLists = [...currentBoard.lists];
@@ -210,7 +197,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         setCurrentBoard(updatedBoard);
         setBoards(prev => prev.map(b => b._id === currentBoard._id ? updatedBoard : b));
 
-        // Call API to move the card to a new list and update its position.
         try {
           await updateCard(cardId, { boardId: currentBoard._id, targetListIndex: overListIndex, newPosition: overCardIndex });
         } catch (err) { console.error("Failed to move card", err); }
@@ -224,8 +210,45 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   };
 
   if (loading) return <div className="p-8 text-center">Loading boards...</div>;
-  if (!currentBoard) return <div className="p-8 text-center">No boards found. Create one to get started!</div>;
 
+  // ========== FIX: Show button even when no boards exist ==========
+  if (!currentBoard) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-4 border-b pb-4">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowNewBoardModal(true)}
+              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              + New Board
+            </button>
+          </div>
+        </div>
+        {showNewBoardModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 w-96">
+              <h2 className="text-xl mb-4">Create New Board</h2>
+              <input
+                type="text"
+                placeholder="Board title"
+                value={newBoardTitle}
+                onChange={(e) => setNewBoardTitle(e.target.value)}
+                className="w-full border rounded p-2 mb-4"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 border rounded">Cancel</button>
+                <button onClick={handleCreateBoard} className="px-4 py-2 bg-blue-600 text-white rounded">Create</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Normal view when a board exists
   return (
     <div>
       <div className="flex justify-between items-center mb-4 border-b pb-4">
@@ -294,7 +317,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
                 key={list._id || listIndex}
                 list={list}
                 listIndex={listIndex}
-               onAddCard={(title) => handleAddCard(currentBoard._id, listIndex, title)}
+                onAddCard={(title) => handleAddCard(currentBoard._id, listIndex, title)}
               />
             ))}
           </SortableContext>
