@@ -1,9 +1,7 @@
-// frontend/next.config.js
 const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Webpack alias for compatibility (Render/Vercel builds)
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias ?? {}),
@@ -11,7 +9,6 @@ const nextConfig = {
     };
     return config;
   },
-  // Turbopack alias for local development (npm run dev)
   turbopack: {
     resolveAlias: {
       '@': path.resolve(process.cwd()),
