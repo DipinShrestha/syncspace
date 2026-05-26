@@ -42,3 +42,25 @@ body {
 .nav-link:hover::after {
   transform: scaleX(1);
 }
+.glass {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.35);
+}
+
+.glass-btn {
+  background: rgba(37,99,235,0.22);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,0.10);
+  transition: 0.3s ease;
+}
+.glass-btn:hover {
+  background: rgba(37,99,235,0.35);
+}
+
+.glass-outline {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
