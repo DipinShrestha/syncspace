@@ -24,13 +24,16 @@ app.use(express.json());
 app.use(cors()); // Allow frontend to connect
 
 // MongoDB connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err.message);
-    process.exit(1);
-  });
-
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI, {
+  autoSelectFamily: false,
+  serverSelectionTimeoutMS: 30000,
+})
+.then(() => console.log('✅ MongoDB connected successfully'))
+.catch((err) => {
+  console.error('❌ MongoDB connection error:', err.message);
+  process.exit(1);
+});
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
