@@ -62,68 +62,6 @@ export default function DashboardPage() {
 
   return (
     <>
-      <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        body {
-          font-family: 'Familjen Grotesk', sans-serif;
-          min-height: 100vh;
-          color: white;
-          background: radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 30%),
-                      radial-gradient(circle at top right, rgba(255,255,255,0.08), transparent 25%),
-                      linear-gradient(135deg, #050505, #0b0b0b, #101010);
-        }
-        .glass-nav {
-          background: rgba(0,0,0,0.55);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-        .glass {
-          background: rgba(255,255,255,0.06);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border: 1px solid rgba(255,255,255,0.08);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.35);
-        }
-        .card-hover {
-          transition: 0.3s ease;
-        }
-        .card-hover:hover {
-          transform: translateY(-6px);
-          background: rgba(255,255,255,0.09);
-        }
-        .logo {
-          width: 210px;
-        }
-        .logo img {
-          width: 100%;
-          display: block;
-        }
-        .sidebar-link {
-          transition: 0.3s ease;
-        }
-        .sidebar-link:hover {
-          background: rgba(255,255,255,0.06);
-        }
-        .sidebar-link.active {
-          background: rgba(59,130,246,0.16);
-          color: #60a5fa;
-        }
-        .glass-btn {
-          background: rgba(37,99,235,0.22);
-          backdrop-filter: blur(18px);
-          border: 1px solid rgba(255,255,255,0.10);
-          transition: 0.3s ease;
-        }
-        .glass-btn:hover {
-          background: rgba(37,99,235,0.35);
-        }
-      `}</style>
-
       {/* NAVBAR */}
       <nav className="glass-nav fixed top-0 left-0 w-full z-50">
         <div className="w-full px-8">
@@ -214,7 +152,7 @@ export default function DashboardPage() {
               </div>
             ))}
 
-            {/* Create new workspace card (if needed) */}
+            {/* Create new workspace card */}
             <div
               onClick={() => setShowModal(true)}
               className="glass card-hover rounded-3xl p-6 flex items-center justify-center cursor-pointer text-gray-400 hover:text-white"

@@ -1,4 +1,4 @@
-// types/board.ts
+// frontend/types/board.ts
 export interface Card {
   _id: string;
   title: string;
@@ -10,7 +10,7 @@ export interface Card {
 }
 
 export interface List {
-  _id?: string; // MongoDB ID for an existing list
+  _id?: string;
   title: string;
   cards: Card[];
 }

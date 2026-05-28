@@ -17,6 +17,14 @@ interface Workspace {
   description: string;
 }
 
+// Document type – should match the one used in DocumentList and DocumentEditor
+interface Document {
+  _id: string;
+  title: string;
+  content: string;
+  updatedAt: string;
+}
+
 export default function WorkspacePage() {
   const { id } = useParams();
   const router = useRouter();
@@ -24,7 +32,7 @@ export default function WorkspacePage() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'boards' | 'documents' | 'chat'>('boards');
-  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null); // fixed type
 
   useEffect(() => {
     if (!authLoading && !user) {

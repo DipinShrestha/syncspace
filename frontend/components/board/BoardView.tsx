@@ -21,7 +21,7 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import BoardList from './BoardList';
 import BoardCard from './BoardCard';
-import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard } from '@/lib/api';
+import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard, moveCard } from '@/lib/api';
 import { Card, List, Board } from '@/types/board';
 import toast from 'react-hot-toast';
 
@@ -176,6 +176,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(card => `card-${card._id}` === overId);
 
       if (activeListIndex === overListIndex) {
+        // Same list: reorder using updateCard (position update)
         const newCards = arrayMove(currentBoard.lists[activeListIndex].cards, activeCardIndex, overCardIndex);
         const updatedLists = [...currentBoard.lists];
         updatedLists[activeListIndex].cards = newCards;
@@ -188,6 +189,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           await updateCard(movedCard._id, { position: overCardIndex });
         } catch (err) { console.error("Failed to update card position", err); }
       } else {
+        // Different list: move card using moveCard endpoint
         const [cardId] = activeId.split('-');
         const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
         const updatedLists = [...currentBoard.lists];
@@ -198,7 +200,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         setBoards(prev => prev.map(b => b._id === currentBoard._id ? updatedBoard : b));
 
         try {
-          await updateCard(cardId, { boardId: currentBoard._id, targetListIndex: overListIndex, newPosition: overCardIndex });
+          await moveCard(cardId, { targetBoardId: currentBoard._id, targetListIndex: overListIndex, newPosition: overCardIndex });
         } catch (err) { console.error("Failed to move card", err); }
       }
     }
@@ -211,7 +213,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
   if (loading) return <div className="p-8 text-center">Loading boards...</div>;
 
-  // ========== FIX: Show button even when no boards exist ==========
+  // Show button even when no boards exist
   if (!currentBoard) {
     return (
       <div>

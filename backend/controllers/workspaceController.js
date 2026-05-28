@@ -1,5 +1,5 @@
 const Workspace = require('../models/Workspace');
-
+const User = require('../models/User');
 // @desc    Create a new workspace
 // @route   POST /api/workspaces
 // @access  Private
@@ -101,28 +101,34 @@ const deleteWorkspace = async (req, res) => {
   }
 };
 
-// @desc    Add a member to workspace
+// @desc    Add a member to workspace by email
 // @route   POST /api/workspaces/:id/members
 // @access  Private (admin or owner)
 const addMember = async (req, res) => {
   try {
-    const { userId, role } = req.body;
+    const { email, role } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
     const workspace = await Workspace.findById(req.params.id);
-    if (!workspace) {
-      return res.status(404).json({ message: 'Workspace not found' });
-    }
+    if (!workspace) return res.status(404).json({ message: 'Workspace not found' });
+
+    const isOwner = workspace.owner.toString() === req.user.id;
     const isAdmin = workspace.members.some(m => m.user.toString() === req.user.id && m.role === 'admin');
-    if (workspace.owner.toString() !== req.user.id && !isAdmin) {
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    // Check if user already a member
-    const alreadyMember = workspace.members.some(m => m.user.toString() === userId);
-    if (alreadyMember) {
-      return res.status(400).json({ message: 'User already in workspace' });
-    }
-    workspace.members.push({ user: userId, role: role || 'member' });
+
+    const userToAdd = await User.findOne({ email });
+    if (!userToAdd) return res.status(404).json({ message: 'User not found with that email' });
+
+    const alreadyMember = workspace.members.some(m => m.user.toString() === userToAdd._id.toString());
+    if (alreadyMember) return res.status(400).json({ message: 'User already in workspace' });
+
+    workspace.members.push({ user: userToAdd._id, role: role || 'member' });
     await workspace.save();
-    res.json(workspace);
+    await workspace.populate('members.user', 'name email avatar');
+
+    res.json({ message: 'Member added successfully', workspace });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
