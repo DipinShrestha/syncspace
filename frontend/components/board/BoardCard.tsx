@@ -31,7 +31,11 @@ const BoardCard: React.FC<BoardCardProps> = ({ card }) => {
       className="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing hover:bg-gray-50"
     >
       <p className="text-sm font-medium text-gray-800">{card.title}</p>
-      {/* You can add more details like labels, due date, etc. here */}
+      {card.assignedTo && (
+        <div className="mt-2 text-xs text-gray-500">
+          👤 Assigned
+        </div>
+      )}
     </div>
   );
 };

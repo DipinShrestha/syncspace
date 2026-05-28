@@ -1,11 +1,11 @@
-// frontend/types/board.ts
+// types/board.ts
 export interface Card {
   _id: string;
   title: string;
   description?: string;
   labels?: string[];
   dueDate?: string;
-  assignedTo?: { _id: string; name: string };
+  assignedTo?: string;   // user ID (string)
   position: number;
 }
 
