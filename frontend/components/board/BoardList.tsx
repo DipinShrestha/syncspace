@@ -1,23 +1,34 @@
+// components/board/BoardList.tsx
 'use client';
 import React, { useState } from 'react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import BoardCard from './BoardCard';
 import { List } from '@/types/board';
 
+interface Member {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
 interface BoardListProps {
   list: List;
   listIndex: number;
-  onAddCard: (title: string) => void;   // ← only one argument
+  onAddCard: (title: string, assigneeId?: string) => void;
+  members?: Member[];
 }
 
-const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard }) => {
+const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard, members = [] }) => {
   const [newCardTitle, setNewCardTitle] = useState('');
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
   const [isAddingCard, setIsAddingCard] = useState(false);
 
   const handleAddCard = () => {
     if (newCardTitle.trim()) {
-      onAddCard(newCardTitle);   // ← pass only the title
+      onAddCard(newCardTitle, selectedAssignee || undefined);
       setNewCardTitle('');
+      setSelectedAssignee('');
       setIsAddingCard(false);
     }
   };
@@ -40,11 +51,22 @@ const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard }) => 
             onChange={(e) => setNewCardTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddCard()}
             placeholder="Enter card title..."
-            className="w-full p-2 border rounded-md text-sm"
+            className="w-full p-2 border rounded-md text-sm mb-2"
             autoFocus
-            onBlur={() => setIsAddingCard(false)}
           />
-          <div className="flex mt-2 space-x-2">
+          {members.length > 0 && (
+            <select
+              value={selectedAssignee}
+              onChange={(e) => setSelectedAssignee(e.target.value)}
+              className="w-full p-2 border rounded-md text-sm mb-2 bg-white"
+            >
+              <option value="">Unassigned</option>
+              {members.map(m => (
+                <option key={m._id} value={m._id}>{m.name}</option>
+              ))}
+            </select>
+          )}
+          <div className="flex space-x-2">
             <button type="button" onClick={handleAddCard} className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700">Add</button>
             <button onClick={() => setIsAddingCard(false)} className="text-gray-500 hover:text-gray-700">Cancel</button>
           </div>

@@ -21,9 +21,15 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import BoardList from './BoardList';
 import BoardCard from './BoardCard';
-import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard, moveCard } from '@/lib/api';
+import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard, moveCard, getWorkspaceById } from '@/lib/api';
 import { Card, List, Board } from '@/types/board';
 import toast from 'react-hot-toast';
+
+interface Member {
+  _id: string;
+  name: string;
+  email: string;
+}
 
 interface BoardViewProps {
   workspaceId: string;
@@ -37,6 +43,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const [newBoardTitle, setNewBoardTitle] = useState('');
   const [newListTitle, setNewListTitle] = useState('');
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -44,8 +51,21 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   );
 
   useEffect(() => {
-    if (workspaceId) fetchBoards();
+    if (workspaceId) {
+      fetchBoards();
+      fetchMembers();
+    }
   }, [workspaceId]);
+
+  const fetchMembers = async () => {
+    try {
+      const res = await getWorkspaceById(workspaceId);
+      const workspaceMembers = res.data.members.map((m: any) => m.user);
+      setMembers(workspaceMembers);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchBoards = async () => {
     setLoading(true);
@@ -95,10 +115,10 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     }
   };
 
-  const handleAddCard = async (boardId: string, listIndex: number, cardTitle: string) => {
+  const handleAddCard = async (boardId: string, listIndex: number, cardTitle: string, assigneeId?: string) => {
     try {
       const tempCardId = `temp-${Date.now()}`;
-      const newCardData = { title: cardTitle, description: '', labels: [] };
+      const newCardData = { title: cardTitle, description: '', labels: [], assignedTo: assigneeId };
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -122,7 +142,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         });
       }
 
-      const res = await addCard(boardId, listIndex, { title: cardTitle });
+      const res = await addCard(boardId, listIndex, { title: cardTitle, assignedTo: assigneeId });
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -176,7 +196,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(card => `card-${card._id}` === overId);
 
       if (activeListIndex === overListIndex) {
-        // Same list: reorder using updateCard (position update)
         const newCards = arrayMove(currentBoard.lists[activeListIndex].cards, activeCardIndex, overCardIndex);
         const updatedLists = [...currentBoard.lists];
         updatedLists[activeListIndex].cards = newCards;
@@ -189,7 +208,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           await updateCard(movedCard._id, { position: overCardIndex });
         } catch (err) { console.error("Failed to update card position", err); }
       } else {
-        // Different list: move card using moveCard endpoint
         const [cardId] = activeId.split('-');
         const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
         const updatedLists = [...currentBoard.lists];
@@ -213,7 +231,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
   if (loading) return <div className="p-8 text-center">Loading boards...</div>;
 
-  // Show button even when no boards exist
   if (!currentBoard) {
     return (
       <div>
@@ -250,7 +267,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     );
   }
 
-  // Normal view when a board exists
   return (
     <div>
       <div className="flex justify-between items-center mb-4 border-b pb-4">
@@ -319,7 +335,8 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
                 key={list._id || listIndex}
                 list={list}
                 listIndex={listIndex}
-                onAddCard={(title) => handleAddCard(currentBoard._id, listIndex, title)}
+                onAddCard={(title, assigneeId) => handleAddCard(currentBoard._id, listIndex, title, assigneeId)}
+                members={members}
               />
             ))}
           </SortableContext>

@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getWorkspaces } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
+import InviteMember from '@/components/InviteMember';
 
 interface Workspace {
   _id: string;
@@ -17,13 +18,11 @@ interface Workspace {
   description: string;
 }
 
-// Document type – should match the one used in DocumentList and DocumentEditor
-// app/workspace/[id]/page.tsx – change this:
 interface Document {
   _id: string;
   title: string;
   content: string;
-  updatedAt?: string;   // ← make optional
+  updatedAt?: string;
 }
 
 export default function WorkspacePage() {
@@ -33,7 +32,7 @@ export default function WorkspacePage() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'boards' | 'documents' | 'chat'>('boards');
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null); // fixed type
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -70,8 +69,13 @@ export default function WorkspacePage() {
         {/* Workspace Header */}
         <div className="bg-white border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <h1 className="text-2xl font-bold">{workspace.name}</h1>
-            <p className="text-gray-600">{workspace.description || 'No description'}</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold">{workspace.name}</h1>
+                <p className="text-gray-600">{workspace.description || 'No description'}</p>
+              </div>
+              <InviteMember workspaceId={id as string} />
+            </div>
           </div>
         </div>
 

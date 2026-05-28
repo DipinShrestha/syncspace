@@ -1,3 +1,4 @@
+// backend/controllers/boardController.js
 const Board = require('../models/Board');
 const Card = require('../models/Card');
 const Workspace = require('../models/Workspace');
@@ -23,7 +24,13 @@ const createBoard = async (req, res) => {
       title,
       workspace: workspaceId,
       createdBy: req.user.id,
-      lists: [], // start with empty lists
+      // Default four lists (columns)
+      lists: [
+        { title: 'To Do', cards: [] },
+        { title: 'In Progress', cards: [] },
+        { title: 'Review', cards: [] },
+        { title: 'Done', cards: [] },
+      ],
     });
 
     // Add board reference to workspace
@@ -116,7 +123,6 @@ const deleteBoard = async (req, res) => {
       return res.status(404).json({ message: 'Board not found' });
     }
     const workspace = await Workspace.findById(board.workspace);
-    // Only owner or admin of workspace can delete?
     const isAdmin = workspace.members.some(m => m.user.toString() === req.user.id && m.role === 'admin');
     if (workspace.owner.toString() !== req.user.id && !isAdmin) {
       return res.status(403).json({ message: 'Not authorized' });
@@ -217,7 +223,7 @@ const addCard = async (req, res) => {
       labels,
       assignedTo,
       board: boardId,
-      position: board.lists[listIndex].cards.length, // append at end
+      position: board.lists[listIndex].cards.length,
     });
     board.lists[listIndex].cards.push(card._id);
     await board.save();
@@ -227,14 +233,13 @@ const addCard = async (req, res) => {
   }
 };
 
-// @desc    Update a card
+// @desc    Update a card (title, description, labels, assignee, position, etc.)
 // @route   PUT /api/cards/:cardId
 // @access  Private
 const updateCard = async (req, res) => {
   try {
     const card = await Card.findById(req.params.cardId);
     if (!card) return res.status(404).json({ message: 'Card not found' });
-    // Authorization via board's workspace (skip for brevity)
     const { title, description, dueDate, labels, assignedTo, position } = req.body;
     if (title !== undefined) card.title = title;
     if (description !== undefined) card.description = description;
