@@ -24,18 +24,19 @@ export default function DocumentEditor({ document, onUpdate }: DocumentEditorPro
     editorProps: { attributes: { class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4' } },
   });
 
-  const autoSave = useCallback(async (content: unknown) => {
-    setSaving(true);
-    try {
-      await updateDocument(document._id, { content: JSON.stringify(content) });
-      setLastSaved(new Date());
-      onUpdate({ ...document, content: JSON.stringify(content) });
-    } catch {
-      toast.error('Failed to save');
-    } finally {
-      setSaving(false);
-    }
-  }, [document, onUpdate]);
+ const autoSave = useCallback(async (content: unknown) => {
+  setSaving(true);
+  try {
+    const res = await updateDocument(document._id, { content: JSON.stringify(content) });
+    setLastSaved(new Date());
+    // res.data is the full updated document from the backend
+    onUpdate(res.data);   // ← pass the whole document (includes updatedAt)
+  } catch {
+    toast.error('Failed to save');
+  } finally {
+    setSaving(false);
+  }
+}, [document, onUpdate]);
 
   useEffect(() => {
     if (!editor) return;
@@ -44,16 +45,16 @@ export default function DocumentEditor({ document, onUpdate }: DocumentEditorPro
   }, [editor, autoSave]);
 
   const saveTitle = async () => {
-    if (title === document.title) return;
-    try {
-      await updateDocument(document._id, { title });
-      setLastSaved(new Date());
-      onUpdate({ ...document, title });
-      toast.success('Title saved');
-    } catch {
-      toast.error('Failed to save title');
-    }
-  };
+  if (title === document.title) return;
+  try {
+    const res = await updateDocument(document._id, { title });
+    setLastSaved(new Date());
+    onUpdate(res.data);   // ← use the full response
+    toast.success('Title saved');
+  } catch {
+    toast.error('Failed to save title');
+  }
+};
 
   return (
     <div className="flex-1 flex flex-col bg-white rounded-lg shadow p-4">

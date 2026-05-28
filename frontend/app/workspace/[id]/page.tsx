@@ -18,11 +18,12 @@ interface Workspace {
 }
 
 // Document type – should match the one used in DocumentList and DocumentEditor
+// app/workspace/[id]/page.tsx – change this:
 interface Document {
   _id: string;
   title: string;
   content: string;
-  updatedAt: string;
+  updatedAt?: string;   // ← make optional
 }
 
 export default function WorkspacePage() {
