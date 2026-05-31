@@ -13,7 +13,8 @@ interface Workspace {
   name: string;
   description: string;
   updatedAt: string;
-  members: { user: { _id: string } }[];
+  members?: { user: { _id: string } }[];
+  owner?: string;
 }
 
 export default function DashboardPage() {
@@ -58,11 +59,11 @@ export default function DashboardPage() {
     }
   };
 
-  if (authLoading || loading) return <div className="p-8">Loading...</div>;
+  if (authLoading || loading) return <div className="p-8 text-white">Loading...</div>;
 
   return (
     <>
-      {/* NAVBAR */}
+      {/* Navbar */}
       <nav className="glass-nav fixed top-0 left-0 w-full z-50">
         <div className="w-full px-8">
           <div className="flex justify-between items-center h-16">
@@ -83,110 +84,75 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      {/* MAIN LAYOUT */}
-      <div className="flex pt-16 min-h-screen">
-        {/* SIDEBAR */}
-        <aside className="hidden md:block w-64 m-4 p-6 glass rounded-3xl h-fit sticky top-24">
-          <div className="mb-8">
-            <p className="uppercase text-xs text-gray-400 mb-2 tracking-wider">
-              Workspace
-            </p>
-            <h2 className="text-blue-400 font-semibold text-lg">
-              My Workspace
-            </h2>
-          </div>
-          <nav className="space-y-2">
-            <Link href="/dashboard" className="sidebar-link active block px-4 py-3 rounded-xl">
-              Dashboard
-            </Link>
-            <Link href="/dashboard/chat" className="sidebar-link block px-4 py-3 rounded-xl text-gray-300">
-              Chat
-            </Link>
-            <Link href="/dashboard/boards" className="sidebar-link block px-4 py-3 rounded-xl text-gray-300">
-              Boards
-            </Link>
-            <Link href="/dashboard/documents" className="sidebar-link block px-4 py-3 rounded-xl text-gray-300">
-              Documents
-            </Link>
-            <Link href="/dashboard/analytics" className="sidebar-link block px-4 py-3 rounded-xl text-gray-300">
-              Analytics
-            </Link>
-          </nav>
-        </aside>
+      {/* Main Content */}
+      <div className="pt-16 px-4 pb-8 max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+          <h1 className="text-2xl font-bold text-white">Your Workspaces</h1>
+          <button
+            onClick={() => setShowModal(true)}
+            className="glass-btn px-4 py-2 rounded-lg text-sm"
+          >
+            + New Workspace
+          </button>
+        </div>
 
-        {/* CONTENT */}
-        <main className="flex-1 px-6 py-10">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 mb-10">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Your Workspaces</h1>
-              <p className="text-gray-400 text-lg">
-                Manage projects, boards, documents and team collaboration in one place.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="glass-btn px-6 py-3 rounded-2xl text-white font-medium"
-            >
-              + New Workspace
-            </button>
-          </div>
-
-          {/* WORKSPACE CARDS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {workspaces.map((ws) => (
-              <div
-                key={ws._id}
-                onClick={() => router.push(`/workspace/${ws._id}`)}
-                className="glass card-hover rounded-3xl p-6 cursor-pointer"
-              >
-                <h3 className="text-xl font-semibold mb-2">{ws.name}</h3>
-                <p className="text-gray-400 text-sm">{ws.description || 'No description'}</p>
-                <div className="flex justify-between items-center mt-6">
-                  <span className="text-sm text-gray-400">
-                    Last active {new Date(ws.updatedAt).toLocaleDateString()}
-                  </span>
-                  <span className="bg-blue-500/15 text-blue-300 px-3 py-1 rounded-full text-sm">
-                    {ws.members?.length || 1} Members
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {/* Create new workspace card */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {workspaces.map((ws) => (
             <div
-              onClick={() => setShowModal(true)}
-              className="glass card-hover rounded-3xl p-6 flex items-center justify-center cursor-pointer text-gray-400 hover:text-white"
+              key={ws._id}
+              onClick={() => router.push(`/workspace/${ws._id}`)}
+              className="glass p-4 rounded-xl cursor-pointer hover:scale-[1.02] transition"
             >
-              + Create New Workspace
+              <h2 className="text-lg font-semibold text-white">{ws.name}</h2>
+              <p className="text-sm text-gray-400">{ws.description || 'No description'}</p>
+              <div className="flex justify-between items-center mt-3 text-xs text-gray-400">
+                <span>{new Date(ws.updatedAt).toLocaleDateString()}</span>
+                <span>{ws.members?.length || 1} members</span>
+              </div>
+              {ws.owner === user?._id && (
+                <span className="text-xs text-blue-400 mt-2 inline-block">(Owner)</span>
+              )}
             </div>
+          ))}
+          <div
+            onClick={() => setShowModal(true)}
+            className="glass p-4 rounded-xl flex items-center justify-center cursor-pointer text-gray-400 hover:text-white"
+          >
+            + Create Workspace
           </div>
-        </main>
+        </div>
       </div>
 
-      {/* NEW WORKSPACE MODAL */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-black/80 backdrop-blur-md rounded-2xl p-6 w-96 border border-white/20">
-            <h2 className="text-xl font-bold mb-4">Create Workspace</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-white">Create Workspace</h2>
             <input
               type="text"
-              placeholder="Workspace name"
+              placeholder="Name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full border border-white/20 bg-transparent rounded-lg px-4 py-2 mb-3 text-white"
+              className="w-full border border-gray-700 bg-gray-800 rounded-lg p-2 mb-3 text-white"
             />
             <textarea
               placeholder="Description (optional)"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
-              className="w-full border border-white/20 bg-transparent rounded-lg px-4 py-2 mb-4 text-white"
+              className="w-full border border-gray-700 bg-gray-800 rounded-lg p-2 mb-4 text-white"
               rows={2}
             />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg border border-white/20">
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300"
+              >
                 Cancel
               </button>
-              <button onClick={handleCreate} className="bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700">
+              <button
+                onClick={handleCreate}
+                className="px-4 py-2 bg-blue-600 rounded-lg text-white"
+              >
                 Create
               </button>
             </div>

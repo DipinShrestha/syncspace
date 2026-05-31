@@ -119,6 +119,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     try {
       const tempCardId = `temp-${Date.now()}`;
       const newCardData = { title: cardTitle, description: '', labels: [], assignedTo: assigneeId };
+      // Optimistic update
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -143,6 +144,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       }
 
       const res = await addCard(boardId, listIndex, { title: cardTitle, assignedTo: assigneeId });
+      // Replace temp with real card
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -196,6 +198,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(card => `card-${card._id}` === overId);
 
       if (activeListIndex === overListIndex) {
+        // Same list: reorder
         const newCards = arrayMove(currentBoard.lists[activeListIndex].cards, activeCardIndex, overCardIndex);
         const updatedLists = [...currentBoard.lists];
         updatedLists[activeListIndex].cards = newCards;
@@ -206,8 +209,9 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         const movedCard = newCards[overCardIndex];
         try {
           await updateCard(movedCard._id, { position: overCardIndex });
-        } catch (err) { console.error("Failed to update card position", err); }
+        } catch (err) { console.error('Failed to update card position', err); }
       } else {
+        // Different list: move card
         const [cardId] = activeId.split('-');
         const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
         const updatedLists = [...currentBoard.lists];
@@ -219,7 +223,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
         try {
           await moveCard(cardId, { targetBoardId: currentBoard._id, targetListIndex: overListIndex, newPosition: overCardIndex });
-        } catch (err) { console.error("Failed to move card", err); }
+        } catch (err) { console.error('Failed to move card', err); }
       }
     }
   };
@@ -231,6 +235,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
   if (loading) return <div className="p-8 text-center">Loading boards...</div>;
 
+  // No boards: show create button
   if (!currentBoard) {
     return (
       <div>
@@ -267,10 +272,11 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     );
   }
 
+  // Normal view with boards
   return (
     <div>
-      <div className="flex justify-between items-center mb-4 border-b pb-4">
-        <div className="flex gap-2">
+      <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-4">
+        <div className="flex flex-wrap gap-2">
           {boards.map(board => (
             <button
               key={board._id}
@@ -291,13 +297,13 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             + New Board
           </button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
           <input
             type="text"
             placeholder="Add a list..."
             value={newListTitle}
             onChange={(e) => setNewListTitle(e.target.value)}
-            className="border rounded-md px-2 py-1 text-sm"
+            className="border rounded-md px-2 py-1 text-sm w-32 sm:w-auto"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newListTitle.trim()) {
                 handleAddList(currentBoard._id, newListTitle);

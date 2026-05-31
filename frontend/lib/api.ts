@@ -56,6 +56,7 @@ export const updateCard = (cardId: string, data: CardData) =>
   api.put(`/cards/${cardId}`, data);
 export const moveCard = (cardId: string, data: { targetBoardId: string; targetListIndex: number; newPosition: number }) =>
   api.patch(`/cards/${cardId}/move`, data);
+export const deleteCard = (cardId: string) => api.delete(`/cards/${cardId}`);
 
 // ========== Document endpoints ==========
 export const getDocumentsByWorkspace = (workspaceId: string) =>

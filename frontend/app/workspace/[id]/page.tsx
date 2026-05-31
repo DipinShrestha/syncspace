@@ -59,7 +59,7 @@ export default function WorkspacePage() {
     }
   };
 
-  if (authLoading || loading) return <div className="p-8">Loading workspace...</div>;
+  if (authLoading || loading) return <div className="p-8 text-white">Loading workspace...</div>;
   if (!workspace) return null;
 
   return (
@@ -69,7 +69,7 @@ export default function WorkspacePage() {
         {/* Workspace Header */}
         <div className="bg-white border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap justify-between items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold">{workspace.name}</h1>
                 <p className="text-gray-600">{workspace.description || 'No description'}</p>
@@ -82,10 +82,10 @@ export default function WorkspacePage() {
         {/* Tabs */}
         <div className="border-b bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex space-x-8">
+            <div className="flex flex-wrap gap-2 md:gap-4">
               <button
                 onClick={() => setActiveTab('boards')}
-                className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-2 md:px-4 text-sm md:text-base font-medium border-b-2 ${
                   activeTab === 'boards'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -95,7 +95,7 @@ export default function WorkspacePage() {
               </button>
               <button
                 onClick={() => setActiveTab('documents')}
-                className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-2 md:px-4 text-sm md:text-base font-medium border-b-2 ${
                   activeTab === 'documents'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -105,7 +105,7 @@ export default function WorkspacePage() {
               </button>
               <button
                 onClick={() => setActiveTab('chat')}
-                className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-2 md:px-4 text-sm md:text-base font-medium border-b-2 ${
                   activeTab === 'chat'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -121,7 +121,7 @@ export default function WorkspacePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {activeTab === 'boards' && <BoardView workspaceId={id as string} />}
           {activeTab === 'documents' && (
-            <div className="flex gap-4 h-[70vh]">
+            <div className="flex flex-col md:flex-row gap-4 h-auto md:h-[70vh]">
               <DocumentList
                 workspaceId={id as string}
                 onSelectDocument={setSelectedDocument}
