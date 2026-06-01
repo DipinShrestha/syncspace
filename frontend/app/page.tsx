@@ -1,64 +1,127 @@
-import Navbar from '@/components/Navbar';
+'use client';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <>
-      <Navbar />
-      <div className="pt-16">
-        {/* Hero Section */}
-        <section className="h-screen flex items-center justify-center bg-black text-white">
-          <div className="text-center px-4">
-            <h1 className="text-5xl md:text-7xl font-bold mb-4">SyncSpace</h1>
-            <p className="text-xl md:text-2xl text-gray-400 mb-8">
-              All‑in‑one collaboration – Notion + Trello + Slack
-            </p>
-            <Link
-              href="/register"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition"
-            >
+      <style jsx global>{`
+        .nav-link::after {
+          content: '';
+          position: absolute;
+          width: 100%;
+          height: 1px;
+          left: 0;
+          bottom: -4px;
+          background: white;
+          transform: scaleX(0);
+          transition: transform 0.3s ease;
+        }
+        .nav-link:hover::after {
+          transform: scaleX(1);
+        }
+        .hero-title {
+          font-size: clamp(50px, 5vw, 62px);
+          font-weight: 200;
+          line-height: 1.05;
+        }
+        .feature-card {
+          transition: 0.35s ease;
+        }
+        .feature-card:hover {
+          transform: translateY(-6px);
+        }
+      `}</style>
+
+      <nav className="glass-nav fixed top-0 left-0 w-full z-50">
+        <div className="w-full px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="logo">
+              <Link href="/">
+                <img src="/Gemini_Generated_Image_wf220zwf220zwf22.png" alt="SyncSpace Logo" />
+              </Link>
+            </div>
+            <div className="desktop-main-menu hidden md:flex gap-6 items-center">
+              <Link href="#features" className="nav-link text-white text-sm font-medium">FEATURES</Link>
+              <Link href="#about" className="nav-link text-white text-sm font-medium">ABOUT US</Link>
+              <Link href="#support" className="nav-link text-white text-sm font-medium">SUPPORT</Link>
+              <Link href="/login" className="text-blue-400 text-sm font-medium">LOGIN</Link>
+              <Link href="/register" className="glass-btn px-5 py-2 rounded-xl text-white text-sm font-medium">
+                SIGN UP
+              </Link>
+            </div>
+            <button className="md:hidden text-white text-2xl" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              ☰
+            </button>
+          </div>
+        </div>
+        <div className={`md:hidden glass m-4 rounded-2xl p-4 space-y-4 ${mobileMenuOpen ? 'block' : 'hidden'}`}>
+          <Link href="#features" className="block text-white" onClick={() => setMobileMenuOpen(false)}>Features</Link>
+          <Link href="#about" className="block text-white" onClick={() => setMobileMenuOpen(false)}>About</Link>
+          <Link href="#support" className="block text-white" onClick={() => setMobileMenuOpen(false)}>Support</Link>
+          <Link href="/login" className="block text-blue-400" onClick={() => setMobileMenuOpen(false)}>Login</Link>
+          <Link href="/register" className="block glass-btn text-center px-4 py-2 rounded-xl" onClick={() => setMobileMenuOpen(false)}>Sign Up</Link>
+        </div>
+      </nav>
+
+      <section className="min-h-screen flex items-center justify-center px-6 text-center">
+        <div className="max-w-5xl mx-auto">
+          <div className="glass inline-block px-5 py-2 rounded-full text-sm mb-8 text-blue-300">
+            ✨ Built for faster teamwork
+          </div>
+          <h1 className="hero-title mb-8">All-in-one collaboration platform</h1>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
+            Chat, boards, docs, AI tools and teamwork — all beautifully connected in one workspace.
+          </p>
+          <div className="flex flex-col md:flex-row justify-center gap-4">
+            <Link href="/register" className="glass-btn px-8 py-4 rounded-2xl text-lg font-medium">
               Get Started Free
             </Link>
+            <button onClick={() => window.open('#', '_blank')} className="glass-outline px-8 py-4 rounded-2xl text-lg font-medium">
+              Watch Demo
+            </button>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Features Section */}
-        <section className="py-20 bg-gray-900 text-white" id="about">
-          <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Everything you need, in one place</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-gray-800 p-6 rounded-lg text-center">
-                <h3 className="text-xl font-semibold mb-2">📋 Kanban Boards</h3>
-                <p className="text-gray-400">Drag‑and‑drop tasks, manage projects like Trello.</p>
-              </div>
-              <div className="bg-gray-800 p-6 rounded-lg text-center">
-                <h3 className="text-xl font-semibold mb-2">📝 Collaborative Docs</h3>
-                <p className="text-gray-400">Real‑time editing with rich text and AI assistance.</p>
-              </div>
-              <div className="bg-gray-800 p-6 rounded-lg text-center">
-                <h3 className="text-xl font-semibold mb-2">💬 Team Chat</h3>
-                <p className="text-gray-400">Instant messaging with channels and direct messages.</p>
-              </div>
+      <section id="features" className="py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-4xl font-bold text-center mb-16">Everything you need in one place</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="glass feature-card rounded-3xl p-8 text-center">
+              <div className="text-5xl mb-4">📋</div>
+              <h3 className="text-2xl font-semibold mb-3">Kanban Boards</h3>
+              <p className="text-gray-300">Plan projects with drag-and-drop task boards.</p>
+            </div>
+            <div className="glass feature-card rounded-3xl p-8 text-center">
+              <div className="text-5xl mb-4">📝</div>
+              <h3 className="text-2xl font-semibold mb-3">Collaborative Docs</h3>
+              <p className="text-gray-300">Create documents together in real-time.</p>
+            </div>
+            <div className="glass feature-card rounded-3xl p-8 text-center">
+              <div className="text-5xl mb-4">💬</div>
+              <h3 className="text-2xl font-semibold mb-3">Team Chat</h3>
+              <p className="text-gray-300">Fast messaging with channels and direct chat.</p>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Call to Action */}
-        <section className="py-20 bg-black text-white text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to boost your team's productivity?</h2>
-          <Link
-            href="/register"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition"
-          >
-            Start Now – It's Free
+      <section className="py-24 px-6 text-center">
+        <div className="glass max-w-4xl mx-auto rounded-3xl p-16">
+          <h2 className="text-4xl font-bold mb-6">Ready to build with your team?</h2>
+          <p className="text-gray-300 mb-8 text-lg">Start your first workspace in minutes.</p>
+          <Link href="/register" className="glass-btn px-8 py-4 rounded-2xl inline-block text-lg">
+            Start Free
           </Link>
-        </section>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <footer className="py-6 bg-gray-900 text-center text-gray-400 text-sm">
-          © {new Date().getFullYear()} SyncSpace. Built with 💻 for CE final project.
-        </footer>
-      </div>
+      <footer className="text-center py-8 text-gray-400 border-t border-white/5">
+        © 2025 SyncSpace
+      </footer>
     </>
   );
 }
