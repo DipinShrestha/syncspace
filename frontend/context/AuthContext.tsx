@@ -48,7 +48,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', res.data.token);
       setUser(res.data);
       toast.success('Logged in successfully');
-      router.push('/dashboard');
+     // after successful login/register
+router.push('/');   // instead of '/dashboard'
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Login failed');
       throw err;
@@ -61,7 +62,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('token', res.data.token);
       setUser(res.data);
       toast.success('Registered successfully');
-      router.push('/dashboard');
+      // after successful login/register
+router.push('/');   // instead of '/dashboard'
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Registration failed');
       throw err;
