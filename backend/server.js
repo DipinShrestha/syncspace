@@ -1,3 +1,4 @@
+// backend/server.js
 const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
@@ -11,8 +12,9 @@ const workspaceRoutes = require('./routes/workspaceRoutes');
 const boardRoutes = require('./routes/boardRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 
-// Socket handler
+// Socket handlers
 const chatSocket = require('./sockets/chatSocket');
+const signaling = require('./signaling');  // new file for video call signaling
 
 dotenv.config();
 
@@ -21,9 +23,8 @@ const PORT = process.env.PORT || 5500;
 
 // Middleware
 app.use(express.json());
-app.use(cors()); // Allow frontend to connect
+app.use(cors());
 
-// MongoDB connection
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
   autoSelectFamily: false,
@@ -34,13 +35,13 @@ mongoose.connect(process.env.MONGO_URI, {
   console.error('❌ MongoDB connection error:', err.message);
   process.exit(1);
 });
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/documents', documentRoutes);
 
-// Test route
 app.get('/', (req, res) => {
   res.send('SyncSpace Backend is running!');
 });
@@ -61,7 +62,8 @@ const io = new Server(server, {
 });
 
 // Initialize Socket.io handlers
-chatSocket(io);
+chatSocket(io);   // existing chat (messages, join workspace, etc.)
+signaling(io);    // new video call signaling
 
 // Start server
 server.listen(PORT, () => {

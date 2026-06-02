@@ -4,6 +4,7 @@ import BoardView from '@/components/board/BoardView';
 import Chat from '@/components/chat/Chat';
 import DocumentList from '@/components/documents/DocumentList';
 import DocumentEditor from '@/components/documents/DocumentEditor';
+import VideoCall from '@/components/VideoCall';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -79,7 +80,7 @@ export default function WorkspacePage() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs – only Boards, Documents, Chat */}
         <div className="border-b bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap gap-2 md:gap-4">
@@ -141,7 +142,15 @@ export default function WorkspacePage() {
               </div>
             </div>
           )}
-          {activeTab === 'chat' && <Chat workspaceId={id as string} />}
+          {activeTab === 'chat' && (
+            <div className="space-y-6">
+              <Chat workspaceId={id as string} />
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-3">Video Call</h3>
+                <VideoCall roomId={id as string} userId={user?._id as string} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
