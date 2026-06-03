@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getWorkspaces, createWorkspace } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
 
@@ -15,7 +14,7 @@ interface Workspace {
   description: string;
   updatedAt: string;
   members: { user: { _id: string } }[];
-  owner: string;
+  owner: string | { _id: string; name: string; email: string }; // can be string or populated object
 }
 
 export default function DashboardPage() {
@@ -62,8 +61,14 @@ export default function DashboardPage() {
 
   if (authLoading || loading) return <div className="p-8">Loading...</div>;
 
-  const ownedWorkspaces = workspaces.filter(ws => ws.owner === user?._id);
-  const memberWorkspaces = workspaces.filter(ws => ws.owner !== user?._id);
+  // Helper to get owner ID regardless of whether owner is a string or object
+  const getOwnerId = (workspace: Workspace): string => {
+    if (typeof workspace.owner === 'string') return workspace.owner;
+    return workspace.owner?._id || '';
+  };
+
+  const ownedWorkspaces = workspaces.filter(ws => getOwnerId(ws) === user?._id);
+  const memberWorkspaces = workspaces.filter(ws => getOwnerId(ws) !== user?._id);
 
   return (
     <>
