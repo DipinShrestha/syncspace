@@ -1,3 +1,4 @@
+// components/Navbar.tsx
 'use client';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -22,11 +23,19 @@ export default function Navbar() {
         ) : (
           <>
             <Link href="/dashboard" className="hover:underline">Dashboard</Link>
+            <Link href="/#features" className="hover:underline">Features</Link>
+            <Link href="/#about" className="hover:underline">About</Link>
+            <Link href="/#support" className="hover:underline">Support</Link>
+            <Link href="/#notifications" className="hover:underline">Notification</Link>
             <button onClick={logout} className="hover:underline">Logout</button>
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-semibold">
+              {user.name?.charAt(0).toUpperCase()}
+            </div>
           </>
         )}
       </nav>
 
+      {/* Mobile menu button and overlay (same as before) */}
       <button
         className="md:hidden flex flex-col justify-center items-center w-8 h-8"
         onClick={() => setMenuOpen(!menuOpen)}
@@ -46,6 +55,10 @@ export default function Navbar() {
           ) : (
             <>
               <Link href="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</Link>
+              <Link href="/#features" onClick={() => setMenuOpen(false)}>Features</Link>
+              <Link href="/#about" onClick={() => setMenuOpen(false)}>About</Link>
+              <Link href="/#support" onClick={() => setMenuOpen(false)}>Support</Link>
+              <Link href="/#notifications" onClick={() => setMenuOpen(false)}>Notification</Link>
               <button onClick={() => { logout(); setMenuOpen(false); }}>Logout</button>
             </>
           )}
