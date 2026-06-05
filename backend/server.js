@@ -12,6 +12,9 @@ const workspaceRoutes = require('./routes/workspaceRoutes');
 const boardRoutes = require('./routes/boardRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 
+const analyticsRoutes = require('./routes/analyticsRoutes');
+app.use('/api/analytics', analyticsRoutes);
+
 // Socket handlers
 const chatSocket = require('./sockets/chatSocket');
 const signaling = require('./signaling');  // new file for video call signaling

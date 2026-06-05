@@ -1,10 +1,5 @@
 // app/workspace/[id]/page.tsx
 'use client';
-import BoardView from '@/components/board/BoardView';
-import Chat from '@/components/chat/Chat';
-import DocumentList from '@/components/documents/DocumentList';
-import DocumentEditor from '@/components/documents/DocumentEditor';
-import VideoCall from '@/components/VideoCall';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -12,6 +7,13 @@ import { getWorkspaces } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
 import InviteMember from '@/components/InviteMember';
+import WorkspaceSidebar from '@/components/WorkspaceSidebar';
+import BoardView from '@/components/board/BoardView';
+import Chat from '@/components/chat/Chat';
+import DocumentList from '@/components/documents/DocumentList';
+import DocumentEditor from '@/components/documents/DocumentEditor';
+import VideoCall from '@/components/VideoCall';
+import Analytics from '@/components/Analytics';
 
 interface Workspace {
   _id: string;
@@ -32,7 +34,7 @@ export default function WorkspacePage() {
   const { user, loading: authLoading } = useAuth();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'boards' | 'documents' | 'chat'>('boards');
+  const [activeTab, setActiveTab] = useState<'boards' | 'documents' | 'chat' | 'analytics'>('boards');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   useEffect(() => {
@@ -66,91 +68,58 @@ export default function WorkspacePage() {
   return (
     <>
       <Navbar />
-      <div className="pt-16 min-h-screen bg-gray-50">
-        {/* Workspace Header */}
-        <div className="bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex flex-wrap justify-between items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">{workspace.name}</h1>
-                <p className="text-gray-600">{workspace.description || 'No description'}</p>
+      <div className="pt-16 min-h-screen bg-gray-900">
+        <div className="flex h-[calc(100vh-4rem)]">
+          {/* Left Sidebar (Discord style) */}
+          <WorkspaceSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+
+          {/* Main Content */}
+          <div className="flex-1 overflow-auto">
+            <div className="p-6">
+              {/* Workspace Header with Invite button */}
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-white">{workspace.name}</h1>
+                  <p className="text-gray-400">{workspace.description || 'No description'}</p>
+                </div>
+                <InviteMember workspaceId={id as string} />
               </div>
-              <InviteMember workspaceId={id as string} />
-            </div>
-          </div>
-        </div>
 
-        {/* Tabs – only Boards, Documents, Chat */}
-        <div className="border-b bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap gap-2 md:gap-4">
-              <button
-                onClick={() => setActiveTab('boards')}
-                className={`py-2 px-2 md:px-4 text-sm md:text-base font-medium border-b-2 ${
-                  activeTab === 'boards'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Boards
-              </button>
-              <button
-                onClick={() => setActiveTab('documents')}
-                className={`py-2 px-2 md:px-4 text-sm md:text-base font-medium border-b-2 ${
-                  activeTab === 'documents'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Documents
-              </button>
-              <button
-                onClick={() => setActiveTab('chat')}
-                className={`py-2 px-2 md:px-4 text-sm md:text-base font-medium border-b-2 ${
-                  activeTab === 'chat'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Chat
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {activeTab === 'boards' && <BoardView workspaceId={id as string} />}
-          {activeTab === 'documents' && (
-            <div className="flex flex-col md:flex-row gap-4 h-auto md:h-[70vh]">
-              <DocumentList
-                workspaceId={id as string}
-                onSelectDocument={setSelectedDocument}
-                selectedDocId={selectedDocument?._id}
-              />
-              <div className="flex-1">
-                {selectedDocument ? (
-                  <DocumentEditor
-                    document={selectedDocument}
-                    onUpdate={(updated) => setSelectedDocument(updated)}
+              {/* Tab Content */}
+              {activeTab === 'boards' && <BoardView workspaceId={id as string} />}
+              {activeTab === 'documents' && (
+                <div className="flex flex-col md:flex-row gap-4 h-[70vh]">
+                  <DocumentList
+                    workspaceId={id as string}
+                    onSelectDocument={setSelectedDocument}
+                    selectedDocId={selectedDocument?._id}
                   />
-                ) : (
-                  <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">
-                    Select a document or create a new one
+                  <div className="flex-1">
+                    {selectedDocument ? (
+                      <DocumentEditor
+                        document={selectedDocument}
+                        onUpdate={(updated) => setSelectedDocument(updated)}
+                      />
+                    ) : (
+                      <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">
+                        Select a document or create a new one
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+              {activeTab === 'chat' && (
+                <div className="space-y-6">
+                  <Chat workspaceId={id as string} />
+                  <div className="border-t border-gray-700 pt-6">
+                    <h3 className="text-lg font-semibold text-white mb-3">Video Call</h3>
+                    <VideoCall roomId={id as string} userId={user?._id as string} />
+                  </div>
+                </div>
+              )}
+              {activeTab === 'analytics' && <Analytics workspaceId={id as string} />}
             </div>
-          )}
-          {activeTab === 'chat' && (
-            <div className="space-y-6">
-              <Chat workspaceId={id as string} />
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-3">Video Call</h3>
-                <VideoCall roomId={id as string} userId={user?._id as string} />
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </>
