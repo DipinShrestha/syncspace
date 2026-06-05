@@ -1,16 +1,15 @@
-// frontend/components/Navbar.tsx
 'use client';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useState, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';  // <-- import
+import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();  // get current path
+  const pathname = usePathname();
   const isDashboard = pathname?.startsWith('/dashboard');
 
   useEffect(() => {
@@ -25,8 +24,9 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-black text-white h-16 flex items-center justify-between px-6 md:px-10">
-      <Link href="/" className="text-xl font-bold tracking-wider">
-        Sync<span className="text-blue-500">Space</span>
+      {/* Logo as image */}
+      <Link href="/" className="logo">
+        <img src="/Gemini_Generated_Image_wf220zwf220zwf22.png" alt="SyncSpace Logo" />
       </Link>
 
       <nav className="hidden md:flex space-x-6 uppercase text-sm font-medium">
@@ -43,7 +43,7 @@ export default function Navbar() {
             <Link href="/#support" className="hover:underline">Support</Link>
             <Link href="/#notifications" className="hover:underline">Notification</Link>
             <button onClick={logout} className="hover:underline">Logout</button>
-            {/* Avatar with dropdown */}
+            {/* Avatar dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
@@ -53,7 +53,6 @@ export default function Navbar() {
               </button>
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-48 bg-black rounded-md shadow-lg py-1 z-50">
-                  {/* Only show settings link on dashboard pages */}
                   {isDashboard && (
                     <Link
                       href="/dashboard/settings"
@@ -79,7 +78,7 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* Mobile menu button – keep existing code */}
+      {/* Mobile menu button */}
       <button
         className="md:hidden flex flex-col justify-center items-center w-8 h-8"
         onClick={() => setMenuOpen(!menuOpen)}
@@ -89,7 +88,7 @@ export default function Navbar() {
         <span className={`block w-6 h-0.5 bg-white transition-transform ${menuOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
       </button>
 
-      {/* Mobile menu overlay – same as before */}
+      {/* Mobile menu overlay */}
       <div className={`fixed top-0 right-0 h-full w-64 bg-black z-40 transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : 'translate-x-full'} md:hidden pt-20`}>
         <nav className="flex flex-col items-center space-y-6 uppercase text-sm">
           {!user ? (
