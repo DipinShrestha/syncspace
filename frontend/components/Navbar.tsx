@@ -1,12 +1,23 @@
-// components/Navbar.tsx
 'use client';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-black text-white h-16 flex items-center justify-between px-6 md:px-10">
@@ -28,14 +39,40 @@ export default function Navbar() {
             <Link href="/#support" className="hover:underline">Support</Link>
             <Link href="/#notifications" className="hover:underline">Notification</Link>
             <button onClick={logout} className="hover:underline">Logout</button>
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-semibold">
-              {user.name?.charAt(0).toUpperCase()}
+            {/* Avatar with dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-semibold focus:outline-none"
+              >
+                {user.name?.charAt(0).toUpperCase()}
+              </button>
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-black rounded-md shadow-lg py-1 z-50">
+                  <Link
+                    href="/dashboard/settings"
+                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    Profile / Settings
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      logout();
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
       </nav>
 
-      {/* Mobile menu button and overlay (same as before) */}
+      {/* Mobile menu button – keep existing code */}
       <button
         className="md:hidden flex flex-col justify-center items-center w-8 h-8"
         onClick={() => setMenuOpen(!menuOpen)}
@@ -45,6 +82,7 @@ export default function Navbar() {
         <span className={`block w-6 h-0.5 bg-white transition-transform ${menuOpen ? '-rotate-45 -translate-y-1.5' : ''}`} />
       </button>
 
+      {/* Mobile menu overlay – same as before */}
       <div className={`fixed top-0 right-0 h-full w-64 bg-black z-40 transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : 'translate-x-full'} md:hidden pt-20`}>
         <nav className="flex flex-col items-center space-y-6 uppercase text-sm">
           {!user ? (

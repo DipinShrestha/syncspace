@@ -3,6 +3,11 @@ const User = require('../models/User');
 // @desc    Create a new workspace
 // @route   POST /api/workspaces
 // @access  Private
+
+// @desc    Remove a member from workspace
+// @route   DELETE /api/workspaces/:workspaceId/members/:userId
+// @access  Private (owner or admin)
+
 const createWorkspace = async (req, res) => {
   try {
     const { name, description } = req.body;
@@ -133,6 +138,27 @@ const addMember = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const removeMember = async (req, res) => {
+  try {
+    const workspace = await Workspace.findById(req.params.workspaceId);
+    if (!workspace) return res.status(404).json({ message: 'Workspace not found' });
+
+    const isOwner = workspace.owner.toString() === req.user.id;
+    const isAdmin = workspace.members.some(m => m.user.toString() === req.user.id && m.role === 'admin');
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const memberIndex = workspace.members.findIndex(m => m.user.toString() === req.params.userId);
+    if (memberIndex === -1) return res.status(404).json({ message: 'Member not found' });
+
+    workspace.members.splice(memberIndex, 1);
+    await workspace.save();
+    res.json({ message: 'Member removed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   createWorkspace,
@@ -141,4 +167,5 @@ module.exports = {
   updateWorkspace,
   deleteWorkspace,
   addMember,
+  removeMember,
 };

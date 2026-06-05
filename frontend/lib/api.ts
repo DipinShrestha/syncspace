@@ -66,5 +66,8 @@ export const createDocument = (data: { title: string; content: string; workspace
 export const updateDocument = (id: string, data: { title?: string; content?: string }) =>
   api.put(`/documents/${id}`, data);
 export const deleteDocument = (id: string) => api.delete(`/documents/${id}`);
+export const deleteWorkspace = (id: string) => api.delete(`/workspaces/${id}`);
+export const removeWorkspaceMember = (workspaceId: string, userId: string) =>
+  api.delete(`/workspaces/${workspaceId}/members/${userId}`);
 
 export default api;

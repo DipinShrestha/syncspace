@@ -1,3 +1,4 @@
+router.delete('/:workspaceId/members/:userId', protect, removeMember);
 const express = require('express');
 const {
   createWorkspace,
@@ -6,6 +7,7 @@ const {
   updateWorkspace,
   deleteWorkspace,
   addMember,
+  removeMember,   // <-- add this
 } = require('../controllers/workspaceController');
 const { protect } = require('../middleware/authMiddleware');
 
