@@ -1,17 +1,16 @@
 'use client';
 
 interface WorkspaceSidebarProps {
-  workspaceId: string;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  activeTab: 'boards' | 'documents' | 'chat' | 'analytics';
+  setActiveTab: (tab: 'boards' | 'documents' | 'chat' | 'analytics') => void;
 }
 
 export default function WorkspaceSidebar({ activeTab, setActiveTab }: WorkspaceSidebarProps) {
   const navItems = [
-    { id: 'boards', label: 'Boards', icon: '📋' },
-    { id: 'documents', label: 'Documents', icon: '📝' },
-    { id: 'chat', label: 'Chat', icon: '💬' },
-    { id: 'analytics', label: 'Analytics', icon: '📊' },
+    { id: 'boards' as const, label: 'Boards', icon: '📋' },
+    { id: 'documents' as const, label: 'Documents', icon: '📝' },
+    { id: 'chat' as const, label: 'Chat', icon: '💬' },
+    { id: 'analytics' as const, label: 'Analytics', icon: '📊' },
   ];
 
   return (
