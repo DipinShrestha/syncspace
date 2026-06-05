@@ -1,13 +1,17 @@
+// frontend/components/Navbar.tsx
 'use client';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';  // <-- import
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();  // get current path
+  const isDashboard = pathname?.startsWith('/dashboard');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -49,13 +53,16 @@ export default function Navbar() {
               </button>
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-48 bg-black rounded-md shadow-lg py-1 z-50">
-                  <Link
-                    href="/dashboard/settings"
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
-                    onClick={() => setShowDropdown(false)}
-                  >
-                    Profile / Settings
-                  </Link>
+                  {/* Only show settings link on dashboard pages */}
+                  {isDashboard && (
+                    <Link
+                      href="/dashboard/settings"
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Profile / Settings
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       setShowDropdown(false);
