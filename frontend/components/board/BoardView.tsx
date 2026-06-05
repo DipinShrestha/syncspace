@@ -1,4 +1,3 @@
-// components/board/BoardView.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -24,6 +23,8 @@ import BoardCard from './BoardCard';
 import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard, moveCard, getWorkspaceById } from '@/lib/api';
 import { Card, List, Board } from '@/types/board';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/hooks/useSocket';
 
 interface Member {
   _id: string;
@@ -36,6 +37,8 @@ interface BoardViewProps {
 }
 
 export default function BoardView({ workspaceId }: BoardViewProps) {
+  const { user } = useAuth();
+  const socket = useSocket();
   const [boards, setBoards] = useState<Board[]>([]);
   const [currentBoard, setCurrentBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,10 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const [newListTitle, setNewListTitle] = useState('');
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  // filters
+  const [filterAssignee, setFilterAssignee] = useState<string>('');
+  const [filterLabel, setFilterLabel] = useState<string>('');
+  const [filterDueDate, setFilterDueDate] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -119,7 +126,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     try {
       const tempCardId = `temp-${Date.now()}`;
       const newCardData = { title: cardTitle, description: '', labels: [], assignedTo: assigneeId };
-      // Optimistic update
+      // optimistic update
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -144,7 +151,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       }
 
       const res = await addCard(boardId, listIndex, { title: cardTitle, assignedTo: assigneeId });
-      // Replace temp with real card
+      // replace temp with real card
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -165,6 +172,16 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             cards: newLists[listIndex].cards.map(card => card._id === tempCardId ? res.data : card),
           };
           return { ...prev, lists: newLists };
+        });
+      }
+
+      // Emit task assignment notification
+      if (assigneeId && assigneeId !== user?._id) {
+        socket?.emit('task-assigned', {
+          assignedTo: assigneeId,
+          cardTitle: cardTitle,
+          workspaceId: workspaceId,
+          cardId: res.data._id,
         });
       }
     } catch (err) {
@@ -196,9 +213,16 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
       const activeCardIndex = currentBoard.lists[activeListIndex].cards.findIndex(card => `card-${card._id}` === activeId);
       const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(card => `card-${card._id}` === overId);
+      const card = currentBoard.lists[activeListIndex].cards[activeCardIndex];
+
+      // Permission check for moving to different list
+      if (activeListIndex !== overListIndex && card.assignedTo !== user?._id) {
+        toast.error('Only the assigned member can move this card between columns');
+        return;
+      }
 
       if (activeListIndex === overListIndex) {
-        // Same list: reorder
+        // same list reorder
         const newCards = arrayMove(currentBoard.lists[activeListIndex].cards, activeCardIndex, overCardIndex);
         const updatedLists = [...currentBoard.lists];
         updatedLists[activeListIndex].cards = newCards;
@@ -211,7 +235,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           await updateCard(movedCard._id, { position: overCardIndex });
         } catch (err) { console.error('Failed to update card position', err); }
       } else {
-        // Different list: move card
+        // different list: move card
         const [cardId] = activeId.split('-');
         const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
         const updatedLists = [...currentBoard.lists];
@@ -235,7 +259,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
   if (loading) return <div className="p-8 text-center">Loading boards...</div>;
 
-  // No boards: show create button
   if (!currentBoard) {
     return (
       <div>
@@ -272,10 +295,25 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     );
   }
 
-  // Normal view with boards
   return (
     <div>
-      <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-4">
+      {/* Filter Bar */}
+      <div className="flex flex-wrap gap-4 mb-4 p-2 glass rounded-lg">
+        <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="bg-gray-800 text-white rounded px-2 py-1">
+          <option value="">All Assignees</option>
+          {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+        </select>
+        <select value={filterLabel} onChange={e => setFilterLabel(e.target.value)} className="bg-gray-800 text-white rounded px-2 py-1">
+          <option value="">All Labels</option>
+          <option value="bug">Bug</option>
+          <option value="feature">Feature</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <input type="date" value={filterDueDate} onChange={e => setFilterDueDate(e.target.value)} className="bg-gray-800 text-white rounded px-2 py-1" />
+        <button onClick={() => { setFilterAssignee(''); setFilterLabel(''); setFilterDueDate(''); }} className="px-2 py-1 bg-gray-700 rounded">Clear Filters</button>
+      </div>
+
+      <div className="flex justify-between items-center mb-4 border-b pb-4">
         <div className="flex flex-wrap gap-2">
           {boards.map(board => (
             <button
@@ -336,15 +374,21 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             items={getDraggableListIds()}
             strategy={horizontalListSortingStrategy}
           >
-            {currentBoard.lists.map((list, listIndex) => (
-              <BoardList
-                key={list._id || listIndex}
-                list={list}
-                listIndex={listIndex}
-                onAddCard={(title, assigneeId) => handleAddCard(currentBoard._id, listIndex, title, assigneeId)}
-                members={members}
-              />
-            ))}
+            {currentBoard.lists.map((list, listIndex) => {
+              let filteredCards = list.cards;
+              if (filterAssignee) filteredCards = filteredCards.filter(c => c.assignedTo === filterAssignee);
+              if (filterLabel) filteredCards = filteredCards.filter(c => c.labels?.includes(filterLabel));
+              if (filterDueDate) filteredCards = filteredCards.filter(c => c.dueDate === filterDueDate);
+              return (
+                <BoardList
+                  key={list._id || listIndex}
+                  list={{ ...list, cards: filteredCards }}
+                  listIndex={listIndex}
+                  onAddCard={(title, assigneeId) => handleAddCard(currentBoard._id, listIndex, title, assigneeId)}
+                  members={members}
+                />
+              );
+            })}
           </SortableContext>
         </div>
         <DragOverlay

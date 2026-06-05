@@ -19,6 +19,8 @@ const createBoard = async (req, res) => {
     if (workspace.owner.toString() !== req.user.id && !isMember) {
       return res.status(403).json({ message: 'Not authorized' });
     }
+    if (code !== undefined) card.code = code;
+if (codeFileUrl !== undefined) card.codeFileUrl = codeFileUrl;
 
     const board = await Board.create({
       title,
@@ -236,17 +238,22 @@ const addCard = async (req, res) => {
 // @desc    Update a card (title, description, labels, assignee, position, etc.)
 // @route   PUT /api/cards/:cardId
 // @access  Private
+// @desc    Update a card (title, description, labels, assignee, position, code, codeFileUrl)
+// @route   PUT /api/cards/:cardId
+// @access  Private
 const updateCard = async (req, res) => {
   try {
     const card = await Card.findById(req.params.cardId);
     if (!card) return res.status(404).json({ message: 'Card not found' });
-    const { title, description, dueDate, labels, assignedTo, position } = req.body;
+    const { title, description, dueDate, labels, assignedTo, position, code, codeFileUrl } = req.body;
     if (title !== undefined) card.title = title;
     if (description !== undefined) card.description = description;
     if (dueDate !== undefined) card.dueDate = dueDate;
     if (labels !== undefined) card.labels = labels;
     if (assignedTo !== undefined) card.assignedTo = assignedTo;
     if (position !== undefined) card.position = position;
+    if (code !== undefined) card.code = code;
+    if (codeFileUrl !== undefined) card.codeFileUrl = codeFileUrl;
     const updated = await card.save();
     res.json(updated);
   } catch (error) {

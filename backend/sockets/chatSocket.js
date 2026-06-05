@@ -5,6 +5,14 @@ const User = require('../models/User');
 
 module.exports = (io) => {
   io.on('connection', (socket) => {
+    socket.on('task-assigned', (data) => {
+  // data = { assignedTo, cardTitle, workspaceId, cardId }
+  io.to(data.workspaceId).emit('notification', {
+    message: `You have been assigned to task: ${data.cardTitle}`,
+    type: 'task',
+    cardId: data.cardId,
+  });
+});
     console.log('🟢 New client connected:', socket.id);
 
     // Join a workspace room
@@ -63,6 +71,14 @@ module.exports = (io) => {
         callback({ error: err.message });
       }
     });
+    socket.on('task-assigned', (data) => {
+  // data = { assignedTo, cardTitle, workspaceId, cardId }
+  io.to(data.workspaceId).emit('notification', {
+    message: `You have been assigned to task: ${data.cardTitle}`,
+    type: 'task',
+    cardId: data.cardId
+  });
+});
 
     socket.on('disconnect', () => {
       console.log('🔴 Client disconnected:', socket.id);

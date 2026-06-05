@@ -1,3 +1,4 @@
+// frontend/components/chat/Chat.tsx
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
@@ -35,6 +36,7 @@ export default function Chat({ workspaceId }: ChatProps) {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
+      console.log('Socket connected');
       setIsConnected(true);
       newSocket.emit('join-workspace', workspaceId, user._id, (response: { error?: string }) => {
         if (response?.error) toast.error(response.error);
@@ -45,7 +47,14 @@ export default function Chat({ workspaceId }: ChatProps) {
     newSocket.on('new-message', (msg: Message) => setMessages(prev => [...prev, msg]));
     newSocket.on('disconnect', () => setIsConnected(false));
 
-    return () => { newSocket.disconnect(); };
+    // Notification listener for task assignments
+    newSocket.on('notification', (data: { message: string; type: string; cardId?: string }) => {
+      toast.success(data.message);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
   }, [workspaceId, user]);
 
   useEffect(() => {
@@ -58,6 +67,13 @@ export default function Chat({ workspaceId }: ChatProps) {
       if (response?.error) toast.error(response.error);
       else setNewMessage('');
     });
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   return (
@@ -83,7 +99,7 @@ export default function Chat({ workspaceId }: ChatProps) {
           <textarea
             value={newMessage}
             onChange={e => setNewMessage(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
+            onKeyDown={handleKeyPress}
             placeholder="Type a message..."
             className="flex-1 border rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
             rows={1}
