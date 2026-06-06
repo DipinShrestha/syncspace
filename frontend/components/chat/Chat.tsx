@@ -41,30 +41,14 @@ export default function Chat({ workspaceId }: ChatProps) {
       console.log('Socket connected');
       setIsConnected(true);
       newSocket.emit('join-workspace', workspaceId, user._id, (response: { error?: string }) => {
-        if (response?.error) {
-          toast.error(response.error);
-        } else {
-          console.log('Joined workspace room');
-          newSocket.emit('load-messages', workspaceId, (msgs: Message[]) => {
-            setMessages(msgs || []);
-          });
-        }
+        if (response?.error) toast.error(response.error);
+        else newSocket.emit('load-messages', workspaceId, (msgs: Message[]) => setMessages(msgs || []));
       });
     });
 
-    newSocket.on('new-message', (msg: Message) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      setIsConnected(false);
-    });
-
-    // Add a listener for task assignment notifications
-    newSocket.on('notification', (data: { message: string; type: string; cardId: string }) => {
-      toast.success(data.message);
-    });
+    newSocket.on('new-message', (msg: Message) => setMessages((prev) => [...prev, msg]));
+    newSocket.on('disconnect', () => setIsConnected(false));
+    newSocket.on('notification', (data: { message: string }) => toast.success(data.message));
 
     return () => {
       newSocket.disconnect();
@@ -78,11 +62,8 @@ export default function Chat({ workspaceId }: ChatProps) {
   const sendMessage = () => {
     if (!newMessage.trim() || !socket || !isConnected) return;
     socket.emit('send-message', { workspaceId, text: newMessage }, (response: { error?: string }) => {
-      if (response?.error) {
-        toast.error(response.error);
-      } else {
-        setNewMessage('');
-      }
+      if (response?.error) toast.error(response.error);
+      else setNewMessage('');
     });
   };
 
@@ -97,9 +78,7 @@ export default function Chat({ workspaceId }: ChatProps) {
     <div className="flex flex-col h-[70vh] bg-white rounded-lg shadow">
       <div className="border-b p-4 bg-gray-50 rounded-t-lg">
         <h2 className="font-semibold">Workspace Chat</h2>
-        <p className="text-xs text-gray-500">
-          {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
-        </p>
+        <p className="text-xs text-gray-500">{isConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
@@ -117,12 +96,7 @@ export default function Chat({ workspaceId }: ChatProps) {
                     : 'bg-gray-100 text-gray-800'
                 }`}
               >
-                <div className="text-xs font-medium mb-1">
-                  {msg.sender.name}
-                  <span className="text-[10px] ml-2 opacity-70">
-                    {new Date(msg.createdAt).toLocaleTimeString()}
-                  </span>
-                </div>
+                <div className="text-xs font-medium mb-1">{msg.sender.name}</div>
                 <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
               </div>
             </div>

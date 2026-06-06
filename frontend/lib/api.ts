@@ -1,6 +1,6 @@
-// frontend/lib/api.ts
+// frontend/lib/api.ts (corrected – duplicate removed)
 import axios from 'axios';
-export const deleteCard = (cardId: string) => api.delete(`/cards/${cardId}`);
+
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -23,6 +23,8 @@ interface CardData {
   boardId?: string;
   targetListIndex?: number;
   newPosition?: number;
+  code?: string;
+  codeFileUrl?: string;
 }
 
 // ========== Auth endpoints ==========
@@ -42,6 +44,9 @@ export const inviteMember = (workspaceId: string, email: string) =>
   api.post(`/workspaces/${workspaceId}/members`, { email });
 export const getWorkspaceById = (id: string) =>
   api.get(`/workspaces/${id}`);
+export const deleteWorkspace = (id: string) => api.delete(`/workspaces/${id}`);
+export const removeWorkspaceMember = (workspaceId: string, userId: string) =>
+  api.delete(`/workspaces/${workspaceId}/members/${userId}`);
 
 // ========== Board endpoints ==========
 export const getBoardsByWorkspace = (workspaceId: string) =>
@@ -56,7 +61,7 @@ export const updateCard = (cardId: string, data: CardData) =>
   api.put(`/cards/${cardId}`, data);
 export const moveCard = (cardId: string, data: { targetBoardId: string; targetListIndex: number; newPosition: number }) =>
   api.patch(`/cards/${cardId}/move`, data);
-export const deleteCard = (cardId: string) => api.delete(`/cards/${cardId}`);
+export const deleteCard = (cardId: string) => api.delete(`/cards/${cardId}`);   // ✅ only one!
 
 // ========== Document endpoints ==========
 export const getDocumentsByWorkspace = (workspaceId: string) =>
@@ -66,8 +71,5 @@ export const createDocument = (data: { title: string; content: string; workspace
 export const updateDocument = (id: string, data: { title?: string; content?: string }) =>
   api.put(`/documents/${id}`, data);
 export const deleteDocument = (id: string) => api.delete(`/documents/${id}`);
-export const deleteWorkspace = (id: string) => api.delete(`/workspaces/${id}`);
-export const removeWorkspaceMember = (workspaceId: string, userId: string) =>
-  api.delete(`/workspaces/${workspaceId}/members/${userId}`);
 
 export default api;
