@@ -1,8 +1,8 @@
 'use client';
 
 interface WorkspaceSidebarProps {
-  activeTab: 'boards' | 'documents' | 'chat' | 'analytics';
-  setActiveTab: (tab: 'boards' | 'documents' | 'chat' | 'analytics') => void;
+  activeTab: 'boards' | 'documents' | 'chat' | 'analytics' | 'code';
+  setActiveTab: (tab: 'boards' | 'documents' | 'chat' | 'analytics' | 'code') => void;
 }
 
 export default function WorkspaceSidebar({ activeTab, setActiveTab }: WorkspaceSidebarProps) {
@@ -11,6 +11,7 @@ export default function WorkspaceSidebar({ activeTab, setActiveTab }: WorkspaceS
     { id: 'documents' as const, label: 'Documents', icon: '📝' },
     { id: 'chat' as const, label: 'Chat', icon: '💬' },
     { id: 'analytics' as const, label: 'Analytics', icon: '📊' },
+    { id: 'code' as const, label: 'Code', icon: '</>' },
   ];
 
   return (
