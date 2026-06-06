@@ -18,6 +18,7 @@ interface Card {
   dueDate?: string;
   labels?: string[];
   assignedTo?: string;
+  code?: string;
 }
 
 interface TaskDetailsModalProps {
@@ -34,14 +35,11 @@ export default function TaskDetailsModal({ isOpen, onClose, card, members, onCar
   const [dueDate, setDueDate] = useState(card.dueDate || '');
   const [labels, setLabels] = useState(card.labels?.join(', ') || '');
   const [assignedTo, setAssignedTo] = useState(card.assignedTo || '');
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(card.code || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Load code from card if exists (we can store code in card.description? Better to add a 'code' field in Card model)
-  // For now, we'll assume code is stored in a separate field – but we need to extend the Card model.
-  // I'll assume card.content or card.code? For simplicity, we'll store code as a string in the card's `code` field.
-  // You should add `code: { type: String, default: '' }` to your Card model in backend.
+  // Load code from card if exists
   useEffect(() => {
     if (card.code) setCode(card.code);
   }, [card]);
@@ -59,8 +57,6 @@ export default function TaskDetailsModal({ isOpen, onClose, card, members, onCar
         body: formData,
       });
       const data = await res.json();
-      // Assume data.url is the file URL. Store it in card.codeUrl or similar.
-      // For simplicity, we'll append the file URL to the code editor content.
       setCode(prev => prev + `\n\n// File uploaded: ${data.url}\n`);
       toast.success('File uploaded');
     } catch {
@@ -79,7 +75,7 @@ export default function TaskDetailsModal({ isOpen, onClose, card, members, onCar
         dueDate: dueDate || undefined,
         labels: labels.split(',').map(l => l.trim()),
         assignedTo: assignedTo || undefined,
-        // code: code, // if you add code field to Card model
+        code: code,
       });
       toast.success('Card updated');
       onCardUpdated();
