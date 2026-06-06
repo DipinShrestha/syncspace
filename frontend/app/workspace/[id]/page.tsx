@@ -14,6 +14,7 @@ import DocumentList from '@/components/documents/DocumentList';
 import DocumentEditor from '@/components/documents/DocumentEditor';
 import VideoCall from '@/components/VideoCall';
 import Analytics from '@/components/Analytics';
+import LiveCodeEditor from '@/components/LiveCodeEditor';
 
 interface Workspace {
   _id: string;
@@ -34,7 +35,7 @@ export default function WorkspacePage() {
   const { user, loading: authLoading } = useAuth();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'boards' | 'documents' | 'chat' | 'analytics'>('boards');
+  const [activeTab, setActiveTab] = useState<'boards' | 'documents' | 'chat' | 'analytics' | 'code'>('boards');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   useEffect(() => {
@@ -70,13 +71,9 @@ export default function WorkspacePage() {
       <Navbar />
       <div className="pt-16 min-h-screen bg-gray-900">
         <div className="flex h-[calc(100vh-4rem)]">
-          {/* Left Sidebar (Discord style) */}
           <WorkspaceSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-
-          {/* Main Content */}
           <div className="flex-1 overflow-auto">
             <div className="p-6">
-              {/* Workspace Header with Invite button */}
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h1 className="text-2xl font-bold text-white">{workspace.name}</h1>
@@ -85,7 +82,6 @@ export default function WorkspacePage() {
                 <InviteMember workspaceId={id as string} />
               </div>
 
-              {/* Tab Content */}
               {activeTab === 'boards' && <BoardView workspaceId={id as string} />}
               {activeTab === 'documents' && (
                 <div className="flex flex-col md:flex-row gap-4 h-[70vh]">
@@ -118,6 +114,7 @@ export default function WorkspacePage() {
                 </div>
               )}
               {activeTab === 'analytics' && <Analytics workspaceId={id as string} />}
+              {activeTab === 'code' && <LiveCodeEditor />}
             </div>
           </div>
         </div>
