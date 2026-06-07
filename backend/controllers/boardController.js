@@ -9,8 +9,6 @@ const Workspace = require('../models/Workspace');
 const createBoard = async (req, res) => {
   try {
     const { title, workspaceId } = req.body;
-
-    // Verify workspace exists and user is a member
     const workspace = await Workspace.findById(workspaceId);
     if (!workspace) {
       return res.status(404).json({ message: 'Workspace not found' });
@@ -19,14 +17,11 @@ const createBoard = async (req, res) => {
     if (workspace.owner.toString() !== req.user.id && !isMember) {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    if (code !== undefined) card.code = code;
-if (codeFileUrl !== undefined) card.codeFileUrl = codeFileUrl;
 
     const board = await Board.create({
       title,
       workspace: workspaceId,
       createdBy: req.user.id,
-      // Default four lists (columns)
       lists: [
         { title: 'To Do', cards: [] },
         { title: 'In Progress', cards: [] },
@@ -35,7 +30,6 @@ if (codeFileUrl !== undefined) card.codeFileUrl = codeFileUrl;
       ],
     });
 
-    // Add board reference to workspace
     workspace.boards.push(board._id);
     await workspace.save();
 
@@ -240,12 +234,16 @@ const addCard = async (req, res) => {
 // @access  Private
 // @desc    Update a card (title, description, labels, assignee, position, code, codeFileUrl)
 // @route   PUT /api/cards/:cardId
+// @desc    Update a card (title, description, labels, assignee, position, code, codeFileUrl, list)
+// @route   PUT /api/cards/:cardId
 // @access  Private
 const updateCard = async (req, res) => {
   try {
     const card = await Card.findById(req.params.cardId);
     if (!card) return res.status(404).json({ message: 'Card not found' });
-    const { title, description, dueDate, labels, assignedTo, position, code, codeFileUrl } = req.body;
+
+    const { title, description, dueDate, labels, assignedTo, position, code, codeFileUrl, list } = req.body;
+
     if (title !== undefined) card.title = title;
     if (description !== undefined) card.description = description;
     if (dueDate !== undefined) card.dueDate = dueDate;
@@ -254,13 +252,14 @@ const updateCard = async (req, res) => {
     if (position !== undefined) card.position = position;
     if (code !== undefined) card.code = code;
     if (codeFileUrl !== undefined) card.codeFileUrl = codeFileUrl;
+    if (list !== undefined) card.list = list;
+
     const updated = await card.save();
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 // @desc    Delete a card
 // @route   DELETE /api/cards/:cardId
 // @access  Private
