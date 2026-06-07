@@ -1,4 +1,3 @@
-// components/board/BoardList.tsx
 'use client';
 import React, { useState } from 'react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -72,7 +71,12 @@ const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard, membe
           </div>
         </div>
       ) : (
-        <button onClick={() => setIsAddingCard(true)} className="mt-3 text-gray-500 hover:text-gray-700 text-sm text-left w-full">+ Add a card</button>
+        // Only show the "+ Add a card" button for the "To Do" column
+        list.title === 'To Do' && (
+          <button onClick={() => setIsAddingCard(true)} className="mt-3 text-gray-500 hover:text-gray-700 text-sm text-left w-full">
+            + Add a card
+          </button>
+        )
       )}
     </div>
   );

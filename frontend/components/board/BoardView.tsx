@@ -20,7 +20,7 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import BoardList from './BoardList';
 import BoardCard from './BoardCard';
-import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard, moveCard, getWorkspaceById } from '@/lib/api';
+import { getBoardsByWorkspace, createBoard, addCard, updateCard, moveCard, getWorkspaceById } from '@/lib/api';
 import { Card, List, Board } from '@/types/board';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -44,7 +44,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const [loading, setLoading] = useState(true);
   const [showNewBoardModal, setShowNewBoardModal] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
-  const [newListTitle, setNewListTitle] = useState('');
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   // filters
@@ -99,26 +98,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       toast.success('Board created');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Creation failed');
-    }
-  };
-
-  const handleAddList = async (boardId: string, title: string) => {
-    try {
-      const res = await addList(boardId, title);
-      const newList = { _id: res.data._id, title: res.data.title, cards: [] };
-      setBoards(prev =>
-        prev.map(board =>
-          board._id === boardId
-            ? { ...board, lists: [...board.lists, newList] }
-            : board
-        )
-      );
-      if (currentBoard?._id === boardId) {
-        setCurrentBoard(prev => prev ? { ...prev, lists: [...prev.lists, newList] } : prev);
-      }
-    } catch (err) {
-      toast.error('Failed to add list');
-      console.error(err);
     }
   };
 
@@ -335,32 +314,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             + New Board
           </button>
         </div>
-        <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
-          <input
-            type="text"
-            placeholder="Add a list..."
-            value={newListTitle}
-            onChange={(e) => setNewListTitle(e.target.value)}
-            className="border rounded-md px-2 py-1 text-sm w-32 sm:w-auto"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newListTitle.trim()) {
-                handleAddList(currentBoard._id, newListTitle);
-                setNewListTitle('');
-              }
-            }}
-          />
-          <button
-            onClick={() => {
-              if (newListTitle.trim()) {
-                handleAddList(currentBoard._id, newListTitle);
-                setNewListTitle('');
-              }
-            }}
-            className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm"
-          >
-            Add List
-          </button>
-        </div>
+        {/* The "Add a list" input and button have been removed */}
       </div>
 
       <DndContext
