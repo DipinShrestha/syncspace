@@ -7,6 +7,7 @@ import { Card } from '@/types/board';
 import { deleteCard } from '@/lib/api';
 import toast from 'react-hot-toast';
 import CardCodeModal from './CardCodeModal';
+import TaskDetailsModal from './TaskDetailsModal';
 
 interface BoardCardProps {
   card: Card;
@@ -16,6 +17,7 @@ interface BoardCardProps {
 
 const BoardCard: React.FC<BoardCardProps> = ({ card, members = [], onCardUpdated }) => {
   const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `card-${card._id}`,
@@ -36,7 +38,7 @@ const BoardCard: React.FC<BoardCardProps> = ({ card, members = [], onCardUpdated
         toast.success('Card deleted');
         onCardUpdated?.();
       } catch {
-        toast.error('Failed to delete card');
+        toast.error('Delete failed');
       }
     }
   };
@@ -49,21 +51,26 @@ const BoardCard: React.FC<BoardCardProps> = ({ card, members = [], onCardUpdated
         {...attributes}
         {...listeners}
         className="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing hover:bg-gray-50 relative"
+        onClick={() => setShowCodeModal(true)}   // click card → code modal
       >
         <p className="text-sm font-medium text-gray-800 pr-12">{card.title}</p>
         {card.assignedTo && (
           <div className="mt-1 text-xs text-gray-500">👤 Assigned</div>
         )}
         <div className="absolute top-2 right-2 flex gap-1">
+          {/* Edit icon (metadata) */}
           <button
-            onClick={(e) => { e.stopPropagation(); setShowCodeModal(true); }}
+            onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }}
             className="text-gray-400 hover:text-white text-xs"
+            title="Edit task details"
           >
-            💻
+            ✎
           </button>
+          {/* Delete icon */}
           <button
             onClick={handleDelete}
             className="text-gray-400 hover:text-red-500 text-xs"
+            title="Delete card"
           >
             ✕
           </button>
@@ -71,7 +78,21 @@ const BoardCard: React.FC<BoardCardProps> = ({ card, members = [], onCardUpdated
       </div>
 
       {showCodeModal && (
-        <CardCodeModal card={card} onClose={() => setShowCodeModal(false)} onUpdate={onCardUpdated || (() => {})} />
+        <CardCodeModal
+          card={card}
+          onClose={() => setShowCodeModal(false)}
+          onUpdate={onCardUpdated || (() => {})}
+        />
+      )}
+
+      {showEditModal && (
+        <TaskDetailsModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          card={card}
+          members={members}
+          onCardUpdated={onCardUpdated || (() => {})}
+        />
       )}
     </>
   );
