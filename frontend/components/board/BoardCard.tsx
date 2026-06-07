@@ -13,9 +13,24 @@ interface BoardCardProps {
   card: Card;
   members?: { _id: string; name: string }[];
   onCardUpdated?: () => void;
+  onMoveStage?: (cardId: string, currentList: string) => void;
+  currentListTitle?: string;
 }
 
-const BoardCard: React.FC<BoardCardProps> = ({ card, members = [], onCardUpdated }) => {
+const getNextStage = (currentList: string): string | null => {
+  const stages = ['To Do', 'In Progress', 'Review', 'Done'];
+  const index = stages.indexOf(currentList);
+  if (index === -1 || index === stages.length - 1) return null;
+  return stages[index + 1];
+};
+
+const BoardCard: React.FC<BoardCardProps> = ({
+  card,
+  members = [],
+  onCardUpdated,
+  onMoveStage,
+  currentListTitle = '',
+}) => {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -43,22 +58,50 @@ const BoardCard: React.FC<BoardCardProps> = ({ card, members = [], onCardUpdated
     }
   };
 
+  const handleMoveStage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onMoveStage && currentListTitle) {
+      onMoveStage(card._id, currentListTitle);
+    }
+  };
+
+  const nextStage = getNextStage(currentListTitle);
+
   return (
     <>
       <div
         ref={setNodeRef}
         style={style}
-        {...attributes}
-        {...listeners}
-        className="bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing hover:bg-gray-50 relative"
-        onClick={() => setShowCodeModal(true)}   // click card → code modal
+        className="bg-white p-3 rounded-md shadow-sm border border-gray-200 hover:bg-gray-50 relative"
       >
-        <p className="text-sm font-medium text-gray-800 pr-12">{card.title}</p>
-        {card.assignedTo && (
-          <div className="mt-1 text-xs text-gray-500">👤 Assigned</div>
-        )}
+        {/* Drag handle – small area on the left */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute left-1 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+        >
+          ⋮⋮
+        </div>
+        {/* Main content area – clickable */}
+        <div
+          className="ml-6 cursor-pointer"
+          onClick={() => setShowCodeModal(true)}
+        >
+          <p className="text-sm font-medium text-gray-800 pr-12">{card.title}</p>
+          {card.assignedTo && (
+            <div className="mt-1 text-xs text-gray-500">👤 Assigned</div>
+          )}
+        </div>
         <div className="absolute top-2 right-2 flex gap-1">
-          {/* Edit icon (metadata) */}
+          {nextStage && (
+            <button
+              onClick={handleMoveStage}
+              className="text-gray-400 hover:text-green-500 text-xs"
+              title={`Move to ${nextStage}`}
+            >
+              →
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }}
             className="text-gray-400 hover:text-white text-xs"
@@ -66,7 +109,6 @@ const BoardCard: React.FC<BoardCardProps> = ({ card, members = [], onCardUpdated
           >
             ✎
           </button>
-          {/* Delete icon */}
           <button
             onClick={handleDelete}
             className="text-gray-400 hover:text-red-500 text-xs"
