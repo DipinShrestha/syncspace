@@ -1,4 +1,4 @@
-// backend/server.js
+// backend/server.js (corrected order)
 const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
@@ -11,13 +11,11 @@ const authRoutes = require('./routes/authRoutes');
 const workspaceRoutes = require('./routes/workspaceRoutes');
 const boardRoutes = require('./routes/boardRoutes');
 const documentRoutes = require('./routes/documentRoutes');
-
-const analyticsRoutes = require('./routes/analyticsRoutes');
-app.use('/api/analytics', analyticsRoutes);
+const analyticsRoutes = require('./routes/analyticsRoutes'); // import here
 
 // Socket handlers
 const chatSocket = require('./sockets/chatSocket');
-const signaling = require('./signaling');  // new file for video call signaling
+const signaling = require('./signaling');
 
 dotenv.config();
 
@@ -44,31 +42,30 @@ app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/analytics', analyticsRoutes); // add here
 
 app.get('/', (req, res) => {
   res.send('SyncSpace Backend is running!');
 });
 
-// Global error handler (must be before server start but after routes)
+// Global error handler
 app.use((err, req, res, next) => {
   console.error('GLOBAL ERROR:', err.stack);
   res.status(500).json({ message: err.message, stack: err.stack });
 });
 
-// Create HTTP server and attach Socket.io
+// HTTP server and Socket.io
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins (update for production)
+    origin: '*',
     methods: ['GET', 'POST'],
   },
 });
 
-// Initialize Socket.io handlers
-chatSocket(io);   // existing chat (messages, join workspace, etc.)
-signaling(io);    // new video call signaling
+chatSocket(io);
+signaling(io);
 
-// Start server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
