@@ -15,7 +15,6 @@ const analyticsRoutes = require('./routes/analyticsRoutes'); // import here
 
 // Socket handlers
 const chatSocket = require('./sockets/chatSocket');
-const signaling = require('./signaling');
 
 dotenv.config();
 
@@ -64,8 +63,9 @@ const io = new Server(server, {
 });
 
 chatSocket(io);
-signaling(io);
+
 
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
