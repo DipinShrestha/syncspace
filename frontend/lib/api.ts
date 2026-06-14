@@ -25,6 +25,7 @@ interface CardData {
   newPosition?: number;
   code?: string;
   codeFileUrl?: string;
+  list?: string;
 }
 
 // ========== Auth endpoints ==========
