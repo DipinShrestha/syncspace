@@ -41,8 +41,8 @@ const BoardList: React.FC<BoardListProps> = ({
   };
 
   return (
-    <div className="glass rounded-md p-3 w-80 flex-shrink-0 flex flex-col max-h-full">
-  <h3 className="font-semibold text-white mb-3 px-1">{list.title}</h3>
+    <div className="bg-gray-100 rounded-md p-3 w-80 flex-shrink-0 flex flex-col max-h-full">
+      <h3 className="font-semibold text-gray-700 mb-3 px-1">{list.title}</h3>
       <div className="flex-grow overflow-y-auto space-y-2 min-h-[2rem]">
         <SortableContext items={list.cards.map(card => `card-${card._id}`)} strategy={verticalListSortingStrategy}>
           {list.cards.map((card) => (
