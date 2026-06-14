@@ -20,7 +20,7 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import BoardList from './BoardList';
 import BoardCard from './BoardCard';
-import { getBoardsByWorkspace, createBoard, addCard, updateCard, moveCard, getWorkspaceById } from '@/lib/api';
+import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard, moveCard, getWorkspaceById } from '@/lib/api';
 import { Card, List, Board } from '@/types/board';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -44,6 +44,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const [loading, setLoading] = useState(true);
   const [showNewBoardModal, setShowNewBoardModal] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
+  const [newListTitle, setNewListTitle] = useState('');
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   // filters
@@ -101,11 +102,31 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     }
   };
 
+  const handleAddList = async (boardId: string, title: string) => {
+    try {
+      const res = await addList(boardId, title);
+      const newList = { _id: res.data._id, title: res.data.title, cards: [] };
+      setBoards(prev =>
+        prev.map(board =>
+          board._id === boardId
+            ? { ...board, lists: [...board.lists, newList] }
+            : board
+        )
+      );
+      if (currentBoard?._id === boardId) {
+        setCurrentBoard(prev => prev ? { ...prev, lists: [...prev.lists, newList] } : prev);
+      }
+    } catch (err) {
+      toast.error('Failed to add list');
+      console.error(err);
+    }
+  };
+
   const handleAddCard = async (boardId: string, listIndex: number, cardTitle: string, assigneeId?: string) => {
+    // ... (existing code unchanged – same as before)
     try {
       const tempCardId = `temp-${Date.now()}`;
       const newCardData = { title: cardTitle, description: '', labels: [], assignedTo: assigneeId };
-      // optimistic update
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -130,7 +151,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       }
 
       const res = await addCard(boardId, listIndex, { title: cardTitle, assignedTo: assigneeId });
-      // replace temp with real card
       setBoards(prevBoards =>
         prevBoards.map(board => {
           if (board._id !== boardId) return board;
@@ -154,7 +174,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         });
       }
 
-      // Emit task assignment notification
       if (assigneeId && assigneeId !== user?._id) {
         socket?.emit('task-assigned', {
           assignedTo: assigneeId,
@@ -167,6 +186,20 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       toast.error('Failed to add card');
       console.error(err);
       fetchBoards();
+    }
+  };
+
+  const handleMoveStage = async (cardId: string, currentList: string) => {
+    const stages = ['To Do', 'In Progress', 'Review', 'Done'];
+    const currentIndex = stages.indexOf(currentList);
+    if (currentIndex === -1 || currentIndex === stages.length - 1) return;
+    const newList = stages[currentIndex + 1];
+    try {
+      await updateCard(cardId, { list: newList });
+      toast.success(`Card moved to ${newList}`);
+      fetchBoards();
+    } catch (err) {
+      toast.error('Failed to move card');
     }
   };
 
@@ -194,14 +227,12 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(card => `card-${card._id}` === overId);
       const card = currentBoard.lists[activeListIndex].cards[activeCardIndex];
 
-      // Permission check for moving to different list
       if (activeListIndex !== overListIndex && card.assignedTo !== user?._id) {
         toast.error('Only the assigned member can move this card between columns');
         return;
       }
 
       if (activeListIndex === overListIndex) {
-        // same list reorder
         const newCards = arrayMove(currentBoard.lists[activeListIndex].cards, activeCardIndex, overCardIndex);
         const updatedLists = [...currentBoard.lists];
         updatedLists[activeListIndex].cards = newCards;
@@ -214,7 +245,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           await updateCard(movedCard._id, { position: overCardIndex });
         } catch (err) { console.error('Failed to update card position', err); }
       } else {
-        // different list: move card
         const [cardId] = activeId.split('-');
         const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
         const updatedLists = [...currentBoard.lists];
@@ -236,36 +266,36 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     return currentBoard.lists.map((_, index) => `list-${index}`);
   };
 
-  if (loading) return <div className="p-8 text-center">Loading boards...</div>;
+  if (loading) return <div className="p-8 text-center text-white">Loading boards...</div>;
 
   if (!currentBoard) {
     return (
       <div>
-        <div className="flex justify-between items-center mb-4 border-b pb-4">
+        <div className="flex justify-between items-center mb-4 border-b border-white/20 pb-4">
           <div className="flex gap-2">
             <button
               onClick={() => setShowNewBoardModal(true)}
-              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+              className="px-3 py-1 glass-btn rounded-lg text-sm"
             >
               + New Board
             </button>
           </div>
         </div>
         {showNewBoardModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h2 className="text-xl mb-4">Create New Board</h2>
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="glass rounded-lg p-6 w-96">
+              <h2 className="text-xl mb-4 text-white">Create New Board</h2>
               <input
                 type="text"
                 placeholder="Board title"
                 value={newBoardTitle}
                 onChange={(e) => setNewBoardTitle(e.target.value)}
-                className="w-full border rounded p-2 mb-4"
+                className="w-full glass-input rounded-lg p-2 mb-4 text-white"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
-                <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 border rounded">Cancel</button>
-                <button onClick={handleCreateBoard} className="px-4 py-2 bg-blue-600 text-white rounded">Create</button>
+                <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 glass-outline rounded-lg">Cancel</button>
+                <button onClick={handleCreateBoard} className="px-4 py-2 glass-btn rounded-lg">Create</button>
               </div>
             </div>
           </div>
@@ -278,30 +308,31 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     <div>
       {/* Filter Bar */}
       <div className="flex flex-wrap gap-4 mb-4 p-2 glass rounded-lg">
-        <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="bg-gray-800 text-white rounded px-2 py-1">
+        <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="glass-input rounded px-2 py-1 text-white text-sm">
           <option value="">All Assignees</option>
           {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
         </select>
-        <select value={filterLabel} onChange={e => setFilterLabel(e.target.value)} className="bg-gray-800 text-white rounded px-2 py-1">
+        <select value={filterLabel} onChange={e => setFilterLabel(e.target.value)} className="glass-input rounded px-2 py-1 text-white text-sm">
           <option value="">All Labels</option>
           <option value="bug">Bug</option>
           <option value="feature">Feature</option>
           <option value="urgent">Urgent</option>
         </select>
-        <input type="date" value={filterDueDate} onChange={e => setFilterDueDate(e.target.value)} className="bg-gray-800 text-white rounded px-2 py-1" />
-        <button onClick={() => { setFilterAssignee(''); setFilterLabel(''); setFilterDueDate(''); }} className="px-2 py-1 bg-gray-700 rounded">Clear Filters</button>
+        <input type="date" value={filterDueDate} onChange={e => setFilterDueDate(e.target.value)} className="glass-input rounded px-2 py-1 text-white text-sm" />
+        <button onClick={() => { setFilterAssignee(''); setFilterLabel(''); setFilterDueDate(''); }} className="px-2 py-1 glass-outline rounded text-sm">Clear Filters</button>
       </div>
 
-      <div className="flex justify-between items-center mb-4 border-b pb-4">
+      {/* Board header with board switcher and add list */}
+      <div className="flex justify-between items-center mb-4 border-b border-white/20 pb-4 flex-wrap">
         <div className="flex flex-wrap gap-2">
           {boards.map(board => (
             <button
               key={board._id}
               onClick={() => setCurrentBoard(board)}
-              className={`px-3 py-1 rounded ${
+              className={`px-3 py-1 rounded-lg text-sm transition ${
                 currentBoard._id === board._id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'glass-active text-white'
+                  : 'glass text-gray-300 hover:bg-white/10'
               }`}
             >
               {board.title}
@@ -309,12 +340,37 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           ))}
           <button
             onClick={() => setShowNewBoardModal(true)}
-            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+            className="px-3 py-1 glass-btn rounded-lg text-sm"
           >
             + New Board
           </button>
         </div>
-        {/* The "Add a list" input and button have been removed */}
+        <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
+          <input
+            type="text"
+            placeholder="Add a list..."
+            value={newListTitle}
+            onChange={(e) => setNewListTitle(e.target.value)}
+            className="glass-input rounded-md px-2 py-1 text-sm w-32 sm:w-auto"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newListTitle.trim()) {
+                handleAddList(currentBoard._id, newListTitle);
+                setNewListTitle('');
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              if (newListTitle.trim()) {
+                handleAddList(currentBoard._id, newListTitle);
+                setNewListTitle('');
+              }
+            }}
+            className="glass-btn px-3 py-1 rounded-md text-sm"
+          >
+            Add List
+          </button>
+        </div>
       </div>
 
       <DndContext
@@ -340,6 +396,8 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
                   listIndex={listIndex}
                   onAddCard={(title, assigneeId) => handleAddCard(currentBoard._id, listIndex, title, assigneeId)}
                   members={members}
+                  onCardUpdated={fetchBoards}
+                  onMoveStage={handleMoveStage}
                 />
               );
             })}
@@ -355,20 +413,20 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       </DndContext>
 
       {showNewBoardModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h2 className="text-xl mb-4">Create New Board</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="glass rounded-lg p-6 w-96">
+            <h2 className="text-xl mb-4 text-white">Create New Board</h2>
             <input
               type="text"
               placeholder="Board title"
               value={newBoardTitle}
               onChange={(e) => setNewBoardTitle(e.target.value)}
-              className="w-full border rounded p-2 mb-4"
+              className="w-full glass-input rounded-lg p-2 mb-4 text-white"
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 border rounded">Cancel</button>
-              <button onClick={handleCreateBoard} className="px-4 py-2 bg-blue-600 text-white rounded">Create</button>
+              <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 glass-outline rounded-lg">Cancel</button>
+              <button onClick={handleCreateBoard} className="px-4 py-2 glass-btn rounded-lg">Create</button>
             </div>
           </div>
         </div>
