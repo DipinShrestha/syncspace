@@ -72,8 +72,7 @@ const BoardCard: React.FC<BoardCardProps> = ({
       <div
         ref={setNodeRef}
         style={style}
-        className="bg-white p-3 rounded-md shadow-sm border border-gray-200 hover:bg-gray-50 relative"
-      >
+        className="glass-card p-3 rounded-md shadow-sm cursor-grab active:cursor-grabbing hover:bg-white/20 relative" >
         {/* Drag handle – small area on the left */}
         <div
           {...attributes}

@@ -8,7 +8,6 @@ interface Member {
   _id: string;
   name: string;
   email: string;
-  avatar?: string;
 }
 
 interface BoardListProps {
@@ -16,9 +15,18 @@ interface BoardListProps {
   listIndex: number;
   onAddCard: (title: string, assigneeId?: string) => void;
   members?: Member[];
+  onCardUpdated?: () => void;
+  onMoveStage?: (cardId: string, currentList: string) => void;
 }
 
-const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard, members = [] }) => {
+const BoardList: React.FC<BoardListProps> = ({
+  list,
+  listIndex,
+  onAddCard,
+  members = [],
+  onCardUpdated,
+  onMoveStage,
+}) => {
   const [newCardTitle, setNewCardTitle] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState<string>('');
   const [isAddingCard, setIsAddingCard] = useState(false);
@@ -33,12 +41,19 @@ const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard, membe
   };
 
   return (
-    <div className="bg-gray-100 rounded-md p-3 w-80 flex-shrink-0 flex flex-col max-h-full">
-      <h3 className="font-semibold text-gray-700 mb-3 px-1">{list.title}</h3>
+    <div className="glass rounded-md p-3 w-80 flex-shrink-0 flex flex-col max-h-full">
+  <h3 className="font-semibold text-white mb-3 px-1">{list.title}</h3>
       <div className="flex-grow overflow-y-auto space-y-2 min-h-[2rem]">
         <SortableContext items={list.cards.map(card => `card-${card._id}`)} strategy={verticalListSortingStrategy}>
           {list.cards.map((card) => (
-            <BoardCard key={card._id} card={card} />
+            <BoardCard
+              key={card._id}
+              card={card}
+              members={members}
+              onCardUpdated={onCardUpdated}
+              onMoveStage={onMoveStage}
+              currentListTitle={list.title}
+            />
           ))}
         </SortableContext>
       </div>
@@ -71,11 +86,10 @@ const BoardList: React.FC<BoardListProps> = ({ list, listIndex, onAddCard, membe
           </div>
         </div>
       ) : (
-        // Only show the "+ Add a card" button for the "To Do" column
         list.title === 'To Do' && (
-          <button onClick={() => setIsAddingCard(true)} className="mt-3 text-gray-500 hover:text-gray-700 text-sm text-left w-full">
-            + Add a card
-          </button>
+          <button onClick={() => setIsAddingCard(true)} className="mt-3 glass-outline text-sm text-left w-full py-2 px-2 rounded">
+  + Add a card
+</button>
         )
       )}
     </div>

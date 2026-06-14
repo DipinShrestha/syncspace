@@ -11,6 +11,7 @@ const cardSchema = new mongoose.Schema(
     position: { type: Number, default: 0 },
     code: { type: String, default: '' },          // code stored as string
     codeFileUrl: { type: String, default: '' },   // uploaded file URL
+    list: { type: String, default: 'To Do' },
   },
   { timestamps: true }
 );
