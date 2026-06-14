@@ -87,9 +87,9 @@ const BoardList: React.FC<BoardListProps> = ({
         </div>
       ) : (
         list.title === 'To Do' && (
-          <button onClick={() => setIsAddingCard(true)} className="mt-3 glass-outline text-sm text-left w-full py-2 px-2 rounded">
-  + Add a card
-</button>
+          <button onClick={() => setIsAddingCard(true)} className="mt-3 text-gray-500 hover:text-gray-700 text-sm text-left w-full">
+            + Add a card
+          </button>
         )
       )}
     </div>
