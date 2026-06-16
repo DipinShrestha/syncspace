@@ -20,7 +20,15 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import BoardList from './BoardList';
 import BoardCard from './BoardCard';
-import { getBoardsByWorkspace, createBoard, addList, addCard, updateCard, moveCard, getWorkspaceById } from '@/lib/api';
+import {
+  getBoardsByWorkspace,
+  createBoard,
+  addList,
+  addCard,
+  updateCard,
+  moveCard,
+  getWorkspaceById,
+} from '@/lib/api';
 import { Card, List, Board } from '@/types/board';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -44,7 +52,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const [loading, setLoading] = useState(true);
   const [showNewBoardModal, setShowNewBoardModal] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
-  const [newListTitle, setNewListTitle] = useState('');
+  const [newListTitle, setNewListTitle] = useState(''); // ← restored
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   // filters
@@ -102,73 +110,97 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     }
   };
 
+  // ✅ Restored: Add a new list to the current board
   const handleAddList = async (boardId: string, title: string) => {
+    if (!title.trim()) return toast.error('List title required');
     try {
       const res = await addList(boardId, title);
       const newList = { _id: res.data._id, title: res.data.title, cards: [] };
-      setBoards(prev =>
-        prev.map(board =>
+      setBoards((prev) =>
+        prev.map((board) =>
           board._id === boardId
             ? { ...board, lists: [...board.lists, newList] }
             : board
         )
       );
       if (currentBoard?._id === boardId) {
-        setCurrentBoard(prev => prev ? { ...prev, lists: [...prev.lists, newList] } : prev);
+        setCurrentBoard((prev) =>
+          prev ? { ...prev, lists: [...prev.lists, newList] } : prev
+        );
       }
+      setNewListTitle('');
+      toast.success('List added');
     } catch (err) {
       toast.error('Failed to add list');
       console.error(err);
     }
   };
 
-  const handleAddCard = async (boardId: string, listIndex: number, cardTitle: string, assigneeId?: string) => {
-    // ... (existing code unchanged – same as before)
+  const handleAddCard = async (
+    boardId: string,
+    listIndex: number,
+    cardTitle: string,
+    assigneeId?: string
+  ) => {
+    // ... (unchanged – optimistic update, API call, notification)
     try {
       const tempCardId = `temp-${Date.now()}`;
       const newCardData = { title: cardTitle, description: '', labels: [], assignedTo: assigneeId };
-      setBoards(prevBoards =>
-        prevBoards.map(board => {
+      setBoards((prevBoards) =>
+        prevBoards.map((board) => {
           if (board._id !== boardId) return board;
           const newLists = [...board.lists];
           newLists[listIndex] = {
             ...newLists[listIndex],
-            cards: [...newLists[listIndex].cards, { ...newCardData, _id: tempCardId, position: newLists[listIndex].cards.length }],
+            cards: [
+              ...newLists[listIndex].cards,
+              { ...newCardData, _id: tempCardId, position: newLists[listIndex].cards.length },
+            ],
           };
           return { ...board, lists: newLists };
         })
       );
       if (currentBoard?._id === boardId) {
-        setCurrentBoard(prev => {
+        setCurrentBoard((prev) => {
           if (!prev) return prev;
           const newLists = [...prev.lists];
           newLists[listIndex] = {
             ...newLists[listIndex],
-            cards: [...newLists[listIndex].cards, { ...newCardData, _id: tempCardId, position: newLists[listIndex].cards.length }],
+            cards: [
+              ...newLists[listIndex].cards,
+              { ...newCardData, _id: tempCardId, position: newLists[listIndex].cards.length },
+            ],
           };
           return { ...prev, lists: newLists };
         });
       }
 
-      const res = await addCard(boardId, listIndex, { title: cardTitle, assignedTo: assigneeId });
-      setBoards(prevBoards =>
-        prevBoards.map(board => {
+      const res = await addCard(boardId, listIndex, {
+        title: cardTitle,
+        assignedTo: assigneeId,
+      });
+      setBoards((prevBoards) =>
+        prevBoards.map((board) => {
           if (board._id !== boardId) return board;
           const newLists = [...board.lists];
           newLists[listIndex] = {
             ...newLists[listIndex],
-            cards: newLists[listIndex].cards.map(card => card._id === tempCardId ? res.data : card),
+            cards: newLists[listIndex].cards.map((card) =>
+              card._id === tempCardId ? res.data : card
+            ),
           };
           return { ...board, lists: newLists };
         })
       );
       if (currentBoard?._id === boardId) {
-        setCurrentBoard(prev => {
+        setCurrentBoard((prev) => {
           if (!prev) return prev;
           const newLists = [...prev.lists];
           newLists[listIndex] = {
             ...newLists[listIndex],
-            cards: newLists[listIndex].cards.map(card => card._id === tempCardId ? res.data : card),
+            cards: newLists[listIndex].cards.map((card) =>
+              card._id === tempCardId ? res.data : card
+            ),
           };
           return { ...prev, lists: newLists };
         });
@@ -189,6 +221,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     }
   };
 
+  // Move card via the → button (also uses permission check)
   const handleMoveStage = async (cardId: string, currentList: string) => {
     const stages = ['To Do', 'In Progress', 'Review', 'Done'];
     const currentIndex = stages.indexOf(currentList);
@@ -219,32 +252,50 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     if (!currentBoard) return;
 
     if (activeId.includes('card-') && overId.includes('card-')) {
-      const activeListIndex = currentBoard.lists.findIndex(list => list.cards.some(card => `card-${card._id}` === activeId));
-      const overListIndex = currentBoard.lists.findIndex(list => list.cards.some(card => `card-${card._id}` === overId));
+      const activeListIndex = currentBoard.lists.findIndex((list) =>
+        list.cards.some((card) => `card-${card._id}` === activeId)
+      );
+      const overListIndex = currentBoard.lists.findIndex((list) =>
+        list.cards.some((card) => `card-${card._id}` === overId)
+      );
       if (activeListIndex === -1 || overListIndex === -1) return;
 
-      const activeCardIndex = currentBoard.lists[activeListIndex].cards.findIndex(card => `card-${card._id}` === activeId);
-      const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(card => `card-${card._id}` === overId);
+      const activeCardIndex = currentBoard.lists[activeListIndex].cards.findIndex(
+        (card) => `card-${card._id}` === activeId
+      );
+      const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(
+        (card) => `card-${card._id}` === overId
+      );
       const card = currentBoard.lists[activeListIndex].cards[activeCardIndex];
 
+      // ✅ Permission check: only assigned member can move between lists
       if (activeListIndex !== overListIndex && card.assignedTo !== user?._id) {
         toast.error('Only the assigned member can move this card between columns');
         return;
       }
 
       if (activeListIndex === overListIndex) {
-        const newCards = arrayMove(currentBoard.lists[activeListIndex].cards, activeCardIndex, overCardIndex);
+        // reorder within same list
+        const newCards = arrayMove(
+          currentBoard.lists[activeListIndex].cards,
+          activeCardIndex,
+          overCardIndex
+        );
         const updatedLists = [...currentBoard.lists];
         updatedLists[activeListIndex].cards = newCards;
         const updatedBoard = { ...currentBoard, lists: updatedLists };
         setCurrentBoard(updatedBoard);
-        setBoards(prev => prev.map(b => b._id === currentBoard._id ? updatedBoard : b));
-
+        setBoards((prev) =>
+          prev.map((b) => (b._id === currentBoard._id ? updatedBoard : b))
+        );
         const movedCard = newCards[overCardIndex];
         try {
           await updateCard(movedCard._id, { position: overCardIndex });
-        } catch (err) { console.error('Failed to update card position', err); }
+        } catch (err) {
+          console.error('Failed to update card position', err);
+        }
       } else {
+        // move to different list
         const [cardId] = activeId.split('-');
         const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
         const updatedLists = [...currentBoard.lists];
@@ -252,11 +303,18 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         updatedLists[overListIndex].cards.splice(overCardIndex, 0, movedCard);
         const updatedBoard = { ...currentBoard, lists: updatedLists };
         setCurrentBoard(updatedBoard);
-        setBoards(prev => prev.map(b => b._id === currentBoard._id ? updatedBoard : b));
-
+        setBoards((prev) =>
+          prev.map((b) => (b._id === currentBoard._id ? updatedBoard : b))
+        );
         try {
-          await moveCard(cardId, { targetBoardId: currentBoard._id, targetListIndex: overListIndex, newPosition: overCardIndex });
-        } catch (err) { console.error('Failed to move card', err); }
+          await moveCard(cardId, {
+            targetBoardId: currentBoard._id,
+            targetListIndex: overListIndex,
+            newPosition: overCardIndex,
+          });
+        } catch (err) {
+          console.error('Failed to move card', err);
+        }
       }
     }
   };
@@ -294,8 +352,18 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
                 autoFocus
               />
               <div className="flex justify-end gap-2">
-                <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 glass-outline rounded-lg">Cancel</button>
-                <button onClick={handleCreateBoard} className="px-4 py-2 glass-btn rounded-lg">Create</button>
+                <button
+                  onClick={() => setShowNewBoardModal(false)}
+                  className="px-4 py-2 glass-outline rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateBoard}
+                  className="px-4 py-2 glass-btn rounded-lg"
+                >
+                  Create
+                </button>
               </div>
             </div>
           </div>
@@ -306,26 +374,52 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
   return (
     <div>
-      {/* Filter Bar */}
+      {/* Filter Bar with glass effect */}
       <div className="flex flex-wrap gap-4 mb-4 p-2 glass rounded-lg">
-        <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="glass-input rounded px-2 py-1 text-white text-sm">
+        <select
+          value={filterAssignee}
+          onChange={(e) => setFilterAssignee(e.target.value)}
+          className="glass-input rounded px-2 py-1 text-white text-sm"
+        >
           <option value="">All Assignees</option>
-          {members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+          {members.map((m) => (
+            <option key={m._id} value={m._id}>
+              {m.name}
+            </option>
+          ))}
         </select>
-        <select value={filterLabel} onChange={e => setFilterLabel(e.target.value)} className="glass-input rounded px-2 py-1 text-white text-sm">
+        <select
+          value={filterLabel}
+          onChange={(e) => setFilterLabel(e.target.value)}
+          className="glass-input rounded px-2 py-1 text-white text-sm"
+        >
           <option value="">All Labels</option>
           <option value="bug">Bug</option>
           <option value="feature">Feature</option>
           <option value="urgent">Urgent</option>
         </select>
-        <input type="date" value={filterDueDate} onChange={e => setFilterDueDate(e.target.value)} className="glass-input rounded px-2 py-1 text-white text-sm" />
-        <button onClick={() => { setFilterAssignee(''); setFilterLabel(''); setFilterDueDate(''); }} className="px-2 py-1 glass-outline rounded text-sm">Clear Filters</button>
+        <input
+          type="date"
+          value={filterDueDate}
+          onChange={(e) => setFilterDueDate(e.target.value)}
+          className="glass-input rounded px-2 py-1 text-white text-sm"
+        />
+        <button
+          onClick={() => {
+            setFilterAssignee('');
+            setFilterLabel('');
+            setFilterDueDate('');
+          }}
+          className="px-2 py-1 glass-outline rounded text-sm"
+        >
+          Clear Filters
+        </button>
       </div>
 
-      {/* Board header with board switcher and add list */}
-      <div className="flex justify-between items-center mb-4 border-b border-white/20 pb-4 flex-wrap">
+      {/* Board header with "Add list" restored */}
+      <div className="flex flex-wrap justify-between items-center mb-4 border-b border-white/20 pb-4">
         <div className="flex flex-wrap gap-2">
-          {boards.map(board => (
+          {boards.map((board) => (
             <button
               key={board._id}
               onClick={() => setCurrentBoard(board)}
@@ -345,6 +439,8 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             + New Board
           </button>
         </div>
+
+        {/* ✅ Add List input and button (restored) */}
         <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
           <input
             type="text"
@@ -366,7 +462,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
                 setNewListTitle('');
               }
             }}
-            className="glass-btn px-3 py-1 rounded-md text-sm"
+            className="glass-btn rounded-md px-3 py-1 text-sm"
           >
             Add List
           </button>
@@ -386,15 +482,31 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           >
             {currentBoard.lists.map((list, listIndex) => {
               let filteredCards = list.cards;
-              if (filterAssignee) filteredCards = filteredCards.filter(c => c.assignedTo === filterAssignee);
-              if (filterLabel) filteredCards = filteredCards.filter(c => c.labels?.includes(filterLabel));
-              if (filterDueDate) filteredCards = filteredCards.filter(c => c.dueDate === filterDueDate);
+              if (filterAssignee)
+                filteredCards = filteredCards.filter(
+                  (c) => c.assignedTo === filterAssignee
+                );
+              if (filterLabel)
+                filteredCards = filteredCards.filter((c) =>
+                  c.labels?.includes(filterLabel)
+                );
+              if (filterDueDate)
+                filteredCards = filteredCards.filter(
+                  (c) => c.dueDate === filterDueDate
+                );
               return (
                 <BoardList
                   key={list._id || listIndex}
                   list={{ ...list, cards: filteredCards }}
                   listIndex={listIndex}
-                  onAddCard={(title, assigneeId) => handleAddCard(currentBoard._id, listIndex, title, assigneeId)}
+                  onAddCard={(title, assigneeId) =>
+                    handleAddCard(
+                      currentBoard._id,
+                      listIndex,
+                      title,
+                      assigneeId
+                    )
+                  }
                   members={members}
                   onCardUpdated={fetchBoards}
                   onMoveStage={handleMoveStage}
@@ -405,7 +517,9 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         </div>
         <DragOverlay
           dropAnimation={{
-            sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.5' } } }),
+            sideEffects: defaultDropAnimationSideEffects({
+              styles: { active: { opacity: '0.5' } },
+            }),
           }}
         >
           {activeCard ? <BoardCard card={activeCard} /> : null}
@@ -425,8 +539,18 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 glass-outline rounded-lg">Cancel</button>
-              <button onClick={handleCreateBoard} className="px-4 py-2 glass-btn rounded-lg">Create</button>
+              <button
+                onClick={() => setShowNewBoardModal(false)}
+                className="px-4 py-2 glass-outline rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateBoard}
+                className="px-4 py-2 glass-btn rounded-lg"
+              >
+                Create
+              </button>
             </div>
           </div>
         </div>
