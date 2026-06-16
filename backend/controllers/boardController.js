@@ -74,7 +74,6 @@ const getBoardById = async (req, res) => {
     if (!board) {
       return res.status(404).json({ message: 'Board not found' });
     }
-    // Check access via workspace
     const workspace = await Workspace.findById(board.workspace);
     const isMember = workspace.members.some(m => m.user.toString() === req.user.id);
     if (workspace.owner.toString() !== req.user.id && !isMember) {
@@ -123,9 +122,7 @@ const deleteBoard = async (req, res) => {
     if (workspace.owner.toString() !== req.user.id && !isAdmin) {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    // Delete all cards in this board
     await Card.deleteMany({ board: board._id });
-    // Remove board reference from workspace
     workspace.boards = workspace.boards.filter(b => b.toString() !== board._id.toString());
     await workspace.save();
     await board.deleteOne();
@@ -147,7 +144,6 @@ const addList = async (req, res) => {
     if (!board) {
       return res.status(404).json({ message: 'Board not found' });
     }
-    // Check workspace access
     const workspace = await Workspace.findById(board.workspace);
     const isMember = workspace.members.some(m => m.user.toString() === req.user.id);
     if (workspace.owner.toString() !== req.user.id && !isMember) {
@@ -188,7 +184,6 @@ const deleteList = async (req, res) => {
     const board = await Board.findById(boardId);
     if (!board) return res.status(404).json({ message: 'Board not found' });
     if (!board.lists[listIndex]) return res.status(404).json({ message: 'List not found' });
-    // Delete all cards in that list
     const cardIds = board.lists[listIndex].cards;
     await Card.deleteMany({ _id: { $in: cardIds } });
     board.lists.splice(listIndex, 1);
@@ -220,6 +215,7 @@ const addCard = async (req, res) => {
       assignedTo,
       board: boardId,
       position: board.lists[listIndex].cards.length,
+      list: board.lists[listIndex].title, // store the list title so analytics can read it
     });
     board.lists[listIndex].cards.push(card._id);
     await board.save();
@@ -229,11 +225,6 @@ const addCard = async (req, res) => {
   }
 };
 
-// @desc    Update a card (title, description, labels, assignee, position, etc.)
-// @route   PUT /api/cards/:cardId
-// @access  Private
-// @desc    Update a card (title, description, labels, assignee, position, code, codeFileUrl)
-// @route   PUT /api/cards/:cardId
 // @desc    Update a card (title, description, labels, assignee, position, code, codeFileUrl, list)
 // @route   PUT /api/cards/:cardId
 // @access  Private
@@ -260,6 +251,7 @@ const updateCard = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 // @desc    Delete a card
 // @route   DELETE /api/cards/:cardId
 // @access  Private
@@ -267,11 +259,13 @@ const deleteCard = async (req, res) => {
   try {
     const card = await Card.findById(req.params.cardId);
     if (!card) return res.status(404).json({ message: 'Card not found' });
-    // Remove card from its board's list
+
     const board = await Board.findById(card.board);
     if (board) {
-      for (let list of board.lists) {
-        const index = list.cards.indexOf(card._id);
+      for (const list of board.lists) {
+        // BUG FIX: indexOf() compares ObjectIds by reference — always returns -1.
+        // Use findIndex() with .equals() for correct MongoDB ObjectId comparison.
+        const index = list.cards.findIndex(id => id.equals(card._id));
         if (index !== -1) {
           list.cards.splice(index, 1);
           break;
@@ -298,9 +292,9 @@ const moveCard = async (req, res) => {
     // Remove card from old board/list
     const oldBoard = await Board.findById(card.board);
     if (oldBoard) {
-      for (let i = 0; i < oldBoard.lists.length; i++) {
-        const list = oldBoard.lists[i];
-        const idx = list.cards.indexOf(card._id);
+      for (const list of oldBoard.lists) {
+        // BUG FIX: same indexOf ObjectId reference bug as deleteCard above.
+        const idx = list.cards.findIndex(id => id.equals(card._id));
         if (idx !== -1) {
           list.cards.splice(idx, 1);
           break;
@@ -319,7 +313,10 @@ const moveCard = async (req, res) => {
     } else {
       newBoard.lists[targetListIndex].cards.splice(newPosition, 0, card._id);
     }
+
     card.board = targetBoardId;
+    // Keep card.list in sync with the target list title
+    card.list = newBoard.lists[targetListIndex].title;
     await card.save();
     await newBoard.save();
     res.json({ message: 'Card moved', card });

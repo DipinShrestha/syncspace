@@ -1,3 +1,4 @@
+// backend/models/Card.js
 const mongoose = require('mongoose');
 
 const cardSchema = new mongoose.Schema(
@@ -9,9 +10,13 @@ const cardSchema = new mongoose.Schema(
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     board: { type: mongoose.Schema.Types.ObjectId, ref: 'Board', required: true },
     position: { type: Number, default: 0 },
-    code: { type: String, default: '' },          // code stored as string
-    codeFileUrl: { type: String, default: '' },   // uploaded file URL
+    // BUG FIX: 'list' field was missing from schema. analyticsController checks
+    // card.list === 'done' and boardController saves card.list via updateCard.
+    // Without this, Mongoose strict mode silently drops the value on save,
+    // making completed task counts always 0.
     list: { type: String, default: 'To Do' },
+    code: { type: String, default: '' },
+    codeFileUrl: { type: String, default: '' },
   },
   { timestamps: true }
 );

@@ -1,3 +1,4 @@
+// backend/controllers/analyticsController.js
 const Workspace = require('../models/Workspace');
 const Board = require('../models/Board');
 const Card = require('../models/Card');
@@ -22,12 +23,29 @@ const getWorkspaceAnalytics = async (req, res) => {
     const boards = await Board.find({ workspace: workspaceId });
     const boardIds = boards.map(b => b._id);
     const cards = await Card.find({ board: { $in: boardIds } });
-    
+
     // Get messages
     const messages = await Message.find({ workspace: workspaceId });
-    
+
     // Get documents
     const documents = await Document.find({ workspace: workspaceId });
+
+    // BUG FIX: card.list was compared to the hardcoded string 'done', but boards
+    // store list titles like 'Done' (capital D). Normalise to lowercase for a
+    // case-insensitive match, and fall back to checking the board's list title
+    // by position for cards that were saved before the schema fix.
+    const isDone = (card) => {
+      if (card.list) return card.list.toLowerCase() === 'done';
+      // Fallback: look up which list the card belongs to in its board
+      const board = boards.find(b => b._id.equals(card.board));
+      if (!board) return false;
+      for (const list of board.lists) {
+        if (list.cards.some(id => id.equals(card._id))) {
+          return list.title.toLowerCase() === 'done';
+        }
+      }
+      return false;
+    };
 
     // Task stats per member
     const tasksByMember = {};
@@ -36,7 +54,7 @@ const getWorkspaceAnalytics = async (req, res) => {
       const userId = card.assignedTo.toString();
       if (!tasksByMember[userId]) tasksByMember[userId] = { assigned: 0, completed: 0 };
       tasksByMember[userId].assigned++;
-      if (card.list === 'done') tasksByMember[userId].completed++;
+      if (isDone(card)) tasksByMember[userId].completed++;
     });
 
     // Messages per member
@@ -68,7 +86,9 @@ const getWorkspaceAnalytics = async (req, res) => {
         name: userMap[uid] || 'Unknown',
         tasksAssigned: tasksByMember[uid]?.assigned || 0,
         tasksCompleted: tasksByMember[uid]?.completed || 0,
-        completionRate: tasksByMember[uid]?.assigned ? ((tasksByMember[uid].completed / tasksByMember[uid].assigned) * 100).toFixed(0) : 0,
+        completionRate: tasksByMember[uid]?.assigned
+          ? ((tasksByMember[uid].completed / tasksByMember[uid].assigned) * 100).toFixed(0)
+          : 0,
         messagesSent: messagesByMember[uid] || 0,
         documentsEdited: editsByMember[uid] || 0,
       };
@@ -76,7 +96,9 @@ const getWorkspaceAnalytics = async (req, res) => {
 
     // Summary
     const totalCards = cards.length;
-    const completedCards = cards.filter(c => c.list === 'done').length;
+    // BUG FIX: was card.list === 'done' (always false before schema fix).
+    // Now uses the isDone() helper with case-insensitive matching + fallback.
+    const completedCards = cards.filter(isDone).length;
     const totalMessages = messages.length;
     const totalDocuments = documents.length;
 
