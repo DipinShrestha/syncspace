@@ -1,9 +1,8 @@
-// app/dashboard/settings/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { getWorkspaces, deleteWorkspace, removeWorkspaceMember } from '@/lib/api';
+import { getWorkspaces, deleteWorkspace, removeWorkspaceMember, updateProfile, changePassword, deleteAccount } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import toast from 'react-hot-toast';
@@ -17,10 +16,19 @@ interface Workspace {
 }
 
 export default function SettingsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
+  // Profile update
+  const [name, setName] = useState(user?.name || '');
+  const [avatar, setAvatar] = useState(user?.avatar || '');
+  // Password change
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  // Delete account
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -48,6 +56,52 @@ export default function SettingsPage() {
 
   const ownedWorkspaces = workspaces.filter(ws => getOwnerId(ws) === user?._id);
 
+  // Profile update
+  const handleUpdateProfile = async () => {
+    try {
+      await updateProfile({ name, avatar });
+      toast.success('Profile updated');
+      // Refresh user context (optional: you can refetch user)
+      window.location.reload();
+    } catch {
+      toast.error('Update failed');
+    }
+  };
+
+  // Password change
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('New password and confirmation do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+    try {
+      await changePassword({ currentPassword, newPassword });
+      toast.success('Password changed');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to change password');
+    }
+  };
+
+  // Delete account
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteAccount();
+      toast.success('Account deleted');
+      logout();
+      router.push('/login');
+    } catch {
+      toast.error('Failed to delete account');
+    }
+  };
+
+  // Workspace deletion
   const handleDeleteWorkspace = async (workspaceId: string) => {
     if (!confirm('Delete this workspace? This action cannot be undone.')) return;
     try {
@@ -63,7 +117,6 @@ export default function SettingsPage() {
     if (!confirm(`Remove ${memberName} from this workspace?`)) return;
     try {
       await removeWorkspaceMember(workspaceId, memberId);
-      // Update local state
       setWorkspaces(prev =>
         prev.map(ws => {
           if (ws._id !== workspaceId) return ws;
@@ -73,13 +126,13 @@ export default function SettingsPage() {
           };
         })
       );
-      toast.success(`Removed ${memberName} from workspace`);
+      toast.success(`Removed ${memberName}`);
     } catch {
       toast.error('Failed to remove member');
     }
   };
 
-  if (authLoading || loading) return <div className="p-8">Loading...</div>;
+  if (authLoading || loading) return <div className="p-8 text-white">Loading...</div>;
 
   return (
     <>
@@ -87,16 +140,104 @@ export default function SettingsPage() {
       <div className="pt-20 px-4 pb-8 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-6">Settings</h1>
 
-        {/* Profile Section */}
+        {/* Profile Information */}
         <div className="glass p-6 rounded-xl mb-8">
           <h2 className="text-xl font-semibold text-white mb-4">Profile Information</h2>
-          <div className="space-y-2">
-            <p><span className="text-gray-400">Name:</span> {user?.name}</p>
-            <p><span className="text-gray-400">Email:</span> {user?.email}</p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full glass-input rounded-lg p-2 mt-1 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Avatar URL</label>
+              <input
+                type="text"
+                value={avatar}
+                onChange={(e) => setAvatar(e.target.value)}
+                className="w-full glass-input rounded-lg p-2 mt-1 text-white"
+                placeholder="https://example.com/avatar.jpg"
+              />
+            </div>
+            <button onClick={handleUpdateProfile} className="glass-btn px-4 py-2 rounded-lg text-sm">
+              Update Profile
+            </button>
           </div>
         </div>
 
-        {/* Workspaces Management */}
+        {/* Change Password */}
+        <div className="glass p-6 rounded-xl mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4">Change Password</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Current Password</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full glass-input rounded-lg p-2 mt-1 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full glass-input rounded-lg p-2 mt-1 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full glass-input rounded-lg p-2 mt-1 text-white"
+              />
+            </div>
+            <button onClick={handleChangePassword} className="glass-btn px-4 py-2 rounded-lg text-sm">
+              Change Password
+            </button>
+          </div>
+        </div>
+
+        {/* Delete Account */}
+        <div className="glass p-6 rounded-xl mb-8 border border-red-500/30">
+          <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              Delete Account
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-red-300">Are you sure? This action is irreversible.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteAccount}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
+                >
+                  Yes, Delete My Account
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="glass-outline px-4 py-2 rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Workspaces Management – same as before */}
         <div className="glass p-6 rounded-xl">
           <h2 className="text-xl font-semibold text-white mb-4">Your Workspaces</h2>
           {ownedWorkspaces.length === 0 ? (

@@ -63,6 +63,8 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
   },
 });
+const uploadRoutes = require('./routes/uploadRoutes');
+app.use('/api/upload', uploadRoutes);
 
 chatSocket(io);
 

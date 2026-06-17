@@ -73,4 +73,22 @@ export const updateDocument = (id: string, data: { title?: string; content?: str
   api.put(`/documents/${id}`, data);
 export const deleteDocument = (id: string) => api.delete(`/documents/${id}`);
 
+// ========== User profile endpoints ==========
+export const updateProfile = (data: { name?: string; avatar?: string }) =>
+  api.put('/auth/profile', data);
+
+export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
+  api.put('/auth/password', data);
+
+export const deleteAccount = () => api.delete('/auth/account');
+
+export const uploadAvatar = (file: File) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return api.post('/upload/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 export default api;
+
