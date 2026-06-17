@@ -1,4 +1,4 @@
-// backend/server.js (corrected order)
+// backend/server.js
 const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
@@ -10,8 +10,9 @@ const { Server } = require('socket.io');
 const authRoutes = require('./routes/authRoutes');
 const workspaceRoutes = require('./routes/workspaceRoutes');
 const boardRoutes = require('./routes/boardRoutes');
+const cardRoutes = require('./routes/cardRoutes'); // FIX: was missing — caused all /api/cards/* to 404
 const documentRoutes = require('./routes/documentRoutes');
-const analyticsRoutes = require('./routes/analyticsRoutes'); // import here
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 // Socket handlers
 const chatSocket = require('./sockets/chatSocket');
@@ -40,8 +41,9 @@ mongoose.connect(process.env.MONGO_URI, {
 app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/boards', boardRoutes);
+app.use('/api/cards', cardRoutes); // FIX: added — frontend calls PUT/DELETE/PATCH /api/cards/:id
 app.use('/api/documents', documentRoutes);
-app.use('/api/analytics', analyticsRoutes); // add here
+app.use('/api/analytics', analyticsRoutes);
 
 app.get('/', (req, res) => {
   res.send('SyncSpace Backend is running!');
@@ -64,8 +66,6 @@ const io = new Server(server, {
 
 chatSocket(io);
 
-
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
