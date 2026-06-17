@@ -206,36 +206,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Delete Account */}
-        <div className="glass p-6 rounded-xl mb-8 border border-red-500/30">
-          <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
-          {!showDeleteConfirm ? (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
-            >
-              Delete Account
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-red-300">Are you sure? This action is irreversible.</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleDeleteAccount}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
-                >
-                  Yes, Delete My Account
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="glass-outline px-4 py-2 rounded-lg text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+    
 
         {/* Workspaces Management – same as before */}
         <div className="glass p-6 rounded-xl">
@@ -283,6 +254,36 @@ export default function SettingsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+        {/* Delete Account */}
+        <div className="glass p-6 rounded-xl mb-8 border border-red-500/30">
+          <h2 className="text-xl font-semibold text-red-200 mb-4">Delete Account</h2>
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              Delete Account
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-red-300">Are you sure? This action is irreversible.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteAccount}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
+                >
+                  Yes, Delete My Account
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="glass-outline px-4 py-2 rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
         </div>
