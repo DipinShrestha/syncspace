@@ -3,18 +3,19 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { getWorkspaces } from '@/lib/api';
+import { getWorkspaceById, getDocumentsByWorkspace, createDocument } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Navbar from '@/components/Navbar';
-import InviteMember from '@/components/InviteMember';
 import WorkspaceSidebar from '@/components/WorkspaceSidebar';
 import BoardView from '@/components/board/BoardView';
 import Chat from '@/components/chat/Chat';
-import DocumentList from '@/components/documents/DocumentList';
 import DocumentEditor from '@/components/documents/DocumentEditor';
 import VideoCall from '@/components/VideoCall';
 import Analytics from '@/components/Analytics';
 import LiveCodeEditor from '@/components/LiveCodeEditor';
+import MembersPanel from '@/components/MembersPanel';
+
+type Tab = 'boards' | 'documents' | 'chat' | 'analytics' | 'code' | 'members';
 
 interface Workspace {
   _id: string;
@@ -33,10 +34,14 @@ export default function WorkspacePage() {
   const { id } = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'boards' | 'documents' | 'chat' | 'analytics' | 'code'>('boards');
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('boards');
+
+  // Single workspace document — named after the workspace
+  const [workspaceDoc, setWorkspaceDoc] = useState<Document | null>(null);
+  const [docLoading, setDocLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -48,22 +53,50 @@ export default function WorkspacePage() {
 
   const fetchWorkspace = async () => {
     try {
-      const res = await getWorkspaces();
-      const found = res.data.find((ws: Workspace) => ws._id === id);
-      if (found) {
-        setWorkspace(found);
-      } else {
-        toast.error('Workspace not found');
-        router.push('/dashboard');
-      }
+      const res = await getWorkspaceById(id as string);
+      setWorkspace(res.data);
     } catch {
       toast.error('Failed to load workspace');
+      router.push('/dashboard');
     } finally {
       setLoading(false);
     }
   };
 
-  if (authLoading || loading) return <div className="p-8 text-white">Loading workspace...</div>;
+  // When the user switches to the Documents tab, load or create the single doc.
+  useEffect(() => {
+    if (activeTab === 'documents' && workspace && !workspaceDoc) {
+      loadOrCreateDoc();
+    }
+  }, [activeTab, workspace]);
+
+  const loadOrCreateDoc = async () => {
+    if (!workspace) return;
+    setDocLoading(true);
+    try {
+      const res = await getDocumentsByWorkspace(id as string);
+      const docs: Document[] = res.data;
+
+      if (docs.length > 0) {
+        // Use the first (and should be only) document
+        setWorkspaceDoc(docs[0]);
+      } else {
+        // Auto-create one document named after the workspace
+        const created = await createDocument({
+          title: workspace.name,
+          content: JSON.stringify({ type: 'doc', content: [{ type: 'paragraph' }] }),
+          workspaceId: id as string,
+        });
+        setWorkspaceDoc(created.data);
+      }
+    } catch {
+      toast.error('Failed to load document');
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  if (authLoading || loading) return <div className="p-8 text-white">Loading workspace…</div>;
   if (!workspace) return null;
 
   return (
@@ -71,39 +104,46 @@ export default function WorkspacePage() {
       <Navbar />
       <div className="pt-16 min-h-screen bg-gray-900">
         <div className="flex h-[calc(100vh-4rem)]">
-          <WorkspaceSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+          {/* Sidebar now carries workspaceId + workspaceName for the Members tab */}
+          <WorkspaceSidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            workspaceId={id as string}
+            workspaceName={workspace.name}
+          />
+
           <div className="flex-1 overflow-auto">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-white">{workspace.name}</h1>
-                  <p className="text-gray-400">{workspace.description || 'No description'}</p>
-                </div>
-                <InviteMember workspaceId={id as string} />
+              {/* Header — InviteMember removed; it now lives inside the Members tab */}
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-white">{workspace.name}</h1>
+                <p className="text-gray-400">{workspace.description || 'No description'}</p>
               </div>
 
+              {/* Boards */}
               {activeTab === 'boards' && <BoardView workspaceId={id as string} />}
+
+              {/* Documents — single doc, no list, no create/delete UI */}
               {activeTab === 'documents' && (
-                <div className="flex flex-col md:flex-row gap-4 h-[70vh]">
-                  <DocumentList
-                    workspaceId={id as string}
-                    onSelectDocument={setSelectedDocument}
-                    selectedDocId={selectedDocument?._id}
-                  />
-                  <div className="flex-1">
-                    {selectedDocument ? (
-                      <DocumentEditor
-                        document={selectedDocument}
-                        onUpdate={(updated) => setSelectedDocument(updated)}
-                      />
-                    ) : (
-                      <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400">
-                        Select a document or create a new one
-                      </div>
-                    )}
-                  </div>
+                <div className="h-[75vh]">
+                  {docLoading ? (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      Loading document…
+                    </div>
+                  ) : workspaceDoc ? (
+                    <DocumentEditor
+                      document={workspaceDoc}
+                      onUpdate={(updated) => setWorkspaceDoc(updated)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      Failed to load document.
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Chat + Video */}
               {activeTab === 'chat' && (
                 <div className="space-y-6">
                   <Chat workspaceId={id as string} />
@@ -113,8 +153,12 @@ export default function WorkspacePage() {
                   </div>
                 </div>
               )}
+
               {activeTab === 'analytics' && <Analytics workspaceId={id as string} />}
-              {activeTab === 'code' && <LiveCodeEditor />}
+              {activeTab === 'code'      && <LiveCodeEditor />}
+
+              {/* Members — replaces the old InviteMember banner */}
+              {activeTab === 'members' && <MembersPanel workspaceId={id as string} />}
             </div>
           </div>
         </div>
