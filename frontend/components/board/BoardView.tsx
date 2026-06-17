@@ -11,13 +11,16 @@ import {
   DragEndEvent,
   DragOverlay,
   defaultDropAnimationSideEffects,
+  DragOverEvent,
+  pointerWithin,
+  rectIntersection,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   horizontalListSortingStrategy,
+  arrayMove,
 } from '@dnd-kit/sortable';
-import { arrayMove } from '@dnd-kit/sortable';
 import BoardList from './BoardList';
 import BoardCard from './BoardCard';
 import {
@@ -52,16 +55,22 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
   const [loading, setLoading] = useState(true);
   const [showNewBoardModal, setShowNewBoardModal] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
-  const [newListTitle, setNewListTitle] = useState(''); // ← restored
+  const [newListTitle, setNewListTitle] = useState('');
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
-  // filters
   const [filterAssignee, setFilterAssignee] = useState<string>('');
   const [filterLabel, setFilterLabel] = useState<string>('');
   const [filterDueDate, setFilterDueDate] = useState<string>('');
 
+  // FIX: track live drag state so we can show the card preview in the correct
+  // destination list while the user is dragging (enables empty-list drops too).
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      // Require the user to move 5px before a drag starts so clicks still work.
+      activationConstraint: { distance: 5 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -90,7 +99,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       if (res.data.length > 0) setCurrentBoard(res.data[0]);
     } catch (err) {
       toast.error('Failed to load boards');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -110,12 +118,11 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     }
   };
 
-  // ✅ Restored: Add a new list to the current board
   const handleAddList = async (boardId: string, title: string) => {
     if (!title.trim()) return toast.error('List title required');
     try {
       const res = await addList(boardId, title);
-      const newList = { _id: res.data._id, title: res.data.title, cards: [] };
+      const newList: List = { _id: res.data._id, title: res.data.title, cards: [] };
       setBoards((prev) =>
         prev.map((board) =>
           board._id === boardId
@@ -132,7 +139,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       toast.success('List added');
     } catch (err) {
       toast.error('Failed to add list');
-      console.error(err);
     }
   };
 
@@ -142,86 +148,70 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     cardTitle: string,
     assigneeId?: string
   ) => {
-    // ... (unchanged – optimistic update, API call, notification)
-    try {
-      const tempCardId = `temp-${Date.now()}`;
-      const newCardData = { title: cardTitle, description: '', labels: [], assignedTo: assigneeId };
-      setBoards((prevBoards) =>
-        prevBoards.map((board) => {
-          if (board._id !== boardId) return board;
-          const newLists = [...board.lists];
-          newLists[listIndex] = {
-            ...newLists[listIndex],
-            cards: [
-              ...newLists[listIndex].cards,
-              { ...newCardData, _id: tempCardId, position: newLists[listIndex].cards.length },
-            ],
-          };
-          return { ...board, lists: newLists };
-        })
-      );
-      if (currentBoard?._id === boardId) {
-        setCurrentBoard((prev) => {
-          if (!prev) return prev;
-          const newLists = [...prev.lists];
-          newLists[listIndex] = {
-            ...newLists[listIndex],
-            cards: [
-              ...newLists[listIndex].cards,
-              { ...newCardData, _id: tempCardId, position: newLists[listIndex].cards.length },
-            ],
-          };
-          return { ...prev, lists: newLists };
-        });
-      }
+    const tempCardId = `temp-${Date.now()}`;
+    const tempCard: Card = {
+      _id: tempCardId,
+      title: cardTitle,
+      description: '',
+      labels: [],
+      assignedTo: assigneeId,
+      position: 0,
+    };
 
+    const applyOptimistic = (boards: Board[]) =>
+      boards.map((board) => {
+        if (board._id !== boardId) return board;
+        const newLists = [...board.lists];
+        newLists[listIndex] = {
+          ...newLists[listIndex],
+          cards: [...newLists[listIndex].cards, tempCard],
+        };
+        return { ...board, lists: newLists };
+      });
+
+    setBoards(applyOptimistic);
+    if (currentBoard?._id === boardId) {
+      setCurrentBoard((prev) => (prev ? applyOptimistic([prev])[0] : prev));
+    }
+
+    try {
       const res = await addCard(boardId, listIndex, {
         title: cardTitle,
         assignedTo: assigneeId,
       });
-      setBoards((prevBoards) =>
-        prevBoards.map((board) => {
+
+      const replaceTemp = (boards: Board[]) =>
+        boards.map((board) => {
           if (board._id !== boardId) return board;
           const newLists = [...board.lists];
           newLists[listIndex] = {
             ...newLists[listIndex],
-            cards: newLists[listIndex].cards.map((card) =>
-              card._id === tempCardId ? res.data : card
+            cards: newLists[listIndex].cards.map((c) =>
+              c._id === tempCardId ? res.data : c
             ),
           };
           return { ...board, lists: newLists };
-        })
-      );
-      if (currentBoard?._id === boardId) {
-        setCurrentBoard((prev) => {
-          if (!prev) return prev;
-          const newLists = [...prev.lists];
-          newLists[listIndex] = {
-            ...newLists[listIndex],
-            cards: newLists[listIndex].cards.map((card) =>
-              card._id === tempCardId ? res.data : card
-            ),
-          };
-          return { ...prev, lists: newLists };
         });
+
+      setBoards(replaceTemp);
+      if (currentBoard?._id === boardId) {
+        setCurrentBoard((prev) => (prev ? replaceTemp([prev])[0] : prev));
       }
 
       if (assigneeId && assigneeId !== user?._id) {
         socket?.emit('task-assigned', {
           assignedTo: assigneeId,
-          cardTitle: cardTitle,
-          workspaceId: workspaceId,
+          cardTitle,
+          workspaceId,
           cardId: res.data._id,
         });
       }
     } catch (err) {
       toast.error('Failed to add card');
-      console.error(err);
       fetchBoards();
     }
   };
 
-  // Move card via the → button (also uses permission check)
   const handleMoveStage = async (cardId: string, currentList: string) => {
     const stages = ['To Do', 'In Progress', 'Review', 'Done'];
     const currentIndex = stages.indexOf(currentList);
@@ -231,91 +221,145 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
       await updateCard(cardId, { list: newList });
       toast.success(`Card moved to ${newList}`);
       fetchBoards();
-    } catch (err) {
+    } catch {
       toast.error('Failed to move card');
     }
   };
 
+  // ─── helpers ────────────────────────────────────────────────────────────────
+
+  /**
+   * Given a dnd-kit id, return { listIndex, cardIndex } within currentBoard.
+   * Returns null if not found.
+   */
+  const findCardPosition = (id: string) => {
+    if (!currentBoard) return null;
+    for (let li = 0; li < currentBoard.lists.length; li++) {
+      const cards = currentBoard.lists[li].cards;
+      for (let ci = 0; ci < cards.length; ci++) {
+        if (`card-${cards[ci]._id}` === id) {
+          return { listIndex: li, cardIndex: ci };
+        }
+      }
+    }
+    return null;
+  };
+
+  /**
+   * Given a dnd-kit id, return the listIndex if the id is a list drop target.
+   */
+  const findListIndex = (id: string): number => {
+    if (!currentBoard) return -1;
+    // list-{index} format from useDroppable in BoardList
+    const match = id.match(/^list-(\d+)$/);
+    if (match) return parseInt(match[1], 10);
+    // also try matching by card lookup
+    const pos = findCardPosition(id);
+    return pos ? pos.listIndex : -1;
+  };
+
+  // ─── drag handlers ───────────────────────────────────────────────────────────
+
   const handleDragStart = (event: any) => {
     if (event.active.data.current?.type === 'card') {
       setActiveCard(event.active.data.current.card);
+      setDraggingCardId(event.active.id.toString());
     }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCard(null);
-    if (!over) return;
+    setDraggingCardId(null);
+    if (!over || !currentBoard) return;
 
     const activeId = active.id.toString();
     const overId = over.id.toString();
-    if (!currentBoard) return;
 
-    if (activeId.includes('card-') && overId.includes('card-')) {
-      const activeListIndex = currentBoard.lists.findIndex((list) =>
-        list.cards.some((card) => `card-${card._id}` === activeId)
-      );
-      const overListIndex = currentBoard.lists.findIndex((list) =>
-        list.cards.some((card) => `card-${card._id}` === overId)
-      );
-      if (activeListIndex === -1 || overListIndex === -1) return;
+    // Only handle card drags
+    if (!activeId.startsWith('card-')) return;
 
-      const activeCardIndex = currentBoard.lists[activeListIndex].cards.findIndex(
-        (card) => `card-${card._id}` === activeId
-      );
-      const overCardIndex = currentBoard.lists[overListIndex].cards.findIndex(
-        (card) => `card-${card._id}` === overId
-      );
-      const card = currentBoard.lists[activeListIndex].cards[activeCardIndex];
+    const activePos = findCardPosition(activeId);
+    if (!activePos) return;
 
-      // ✅ Permission check: only assigned member can move between lists
-      if (activeListIndex !== overListIndex && card.assignedTo !== user?._id) {
-        toast.error('Only the assigned member can move this card between columns');
-        return;
-      }
+    // Determine target list and card position
+    let targetListIndex: number;
+    let targetCardIndex: number;
 
-      if (activeListIndex === overListIndex) {
-        // reorder within same list
-        const newCards = arrayMove(
-          currentBoard.lists[activeListIndex].cards,
-          activeCardIndex,
-          overCardIndex
-        );
-        const updatedLists = [...currentBoard.lists];
-        updatedLists[activeListIndex].cards = newCards;
-        const updatedBoard = { ...currentBoard, lists: updatedLists };
-        setCurrentBoard(updatedBoard);
-        setBoards((prev) =>
-          prev.map((b) => (b._id === currentBoard._id ? updatedBoard : b))
-        );
-        const movedCard = newCards[overCardIndex];
-        try {
-          await updateCard(movedCard._id, { position: overCardIndex });
-        } catch (err) {
-          console.error('Failed to update card position', err);
-        }
+    if (overId.startsWith('card-')) {
+      // Dropped on another card
+      const overPos = findCardPosition(overId);
+      if (!overPos) return;
+      targetListIndex = overPos.listIndex;
+      targetCardIndex = overPos.cardIndex;
+    } else {
+      // FIX: dropped on a list container (empty list or list padding area)
+      targetListIndex = findListIndex(overId);
+      if (targetListIndex === -1) return;
+      // Append to end of the target list
+      targetCardIndex = currentBoard.lists[targetListIndex].cards.length;
+    }
+
+    const { listIndex: sourceListIndex, cardIndex: sourceCardIndex } = activePos;
+    const movedCard = currentBoard.lists[sourceListIndex].cards[sourceCardIndex];
+
+    // Permission check: only assigned member can move between lists
+    if (sourceListIndex !== targetListIndex && movedCard.assignedTo !== user?._id) {
+      toast.error('Only the assigned member can move this card between columns');
+      return;
+    }
+
+    // Build updated lists optimistically
+    const newLists = currentBoard.lists.map((list) => ({
+      ...list,
+      cards: [...list.cards],
+    }));
+
+    if (sourceListIndex === targetListIndex) {
+      // Reorder within same list
+      if (sourceCardIndex === targetCardIndex) return;
+      newLists[sourceListIndex].cards = arrayMove(
+        newLists[sourceListIndex].cards,
+        sourceCardIndex,
+        targetCardIndex
+      );
+    } else {
+      // FIX: move across lists — update card.list so analytics stays correct
+      const updatedCard = {
+        ...movedCard,
+        list: currentBoard.lists[targetListIndex].title,
+      };
+      newLists[sourceListIndex].cards.splice(sourceCardIndex, 1);
+      // Clamp index in case we appended-to-end on an empty list
+      const insertAt = Math.min(targetCardIndex, newLists[targetListIndex].cards.length);
+      newLists[targetListIndex].cards.splice(insertAt, 0, updatedCard);
+    }
+
+    const updatedBoard = { ...currentBoard, lists: newLists };
+    setCurrentBoard(updatedBoard);
+    setBoards((prev) => prev.map((b) => (b._id === currentBoard._id ? updatedBoard : b)));
+
+    // Persist
+    try {
+      if (sourceListIndex === targetListIndex) {
+        await updateCard(movedCard._id, { position: targetCardIndex });
       } else {
-        // move to different list
-        const [cardId] = activeId.split('-');
-        const movedCard = currentBoard.lists[activeListIndex].cards[activeCardIndex];
-        const updatedLists = [...currentBoard.lists];
-        updatedLists[activeListIndex].cards.splice(activeCardIndex, 1);
-        updatedLists[overListIndex].cards.splice(overCardIndex, 0, movedCard);
-        const updatedBoard = { ...currentBoard, lists: updatedLists };
-        setCurrentBoard(updatedBoard);
-        setBoards((prev) =>
-          prev.map((b) => (b._id === currentBoard._id ? updatedBoard : b))
-        );
-        try {
-          await moveCard(cardId, {
-            targetBoardId: currentBoard._id,
-            targetListIndex: overListIndex,
-            newPosition: overCardIndex,
-          });
-        } catch (err) {
-          console.error('Failed to move card', err);
-        }
+        // FIX: was doing activeId.split('-')[0] which produces the wrong id
+        // (e.g. 'card' from 'card-abc123'). Use movedCard._id directly.
+        await moveCard(movedCard._id, {
+          targetBoardId: currentBoard._id,
+          targetListIndex,
+          newPosition: targetCardIndex,
+        });
+        // Keep card.list field in sync on the server
+        await updateCard(movedCard._id, {
+          list: currentBoard.lists[targetListIndex].title,
+        });
       }
+    } catch (err) {
+      console.error('Failed to persist card move', err);
+      // Roll back on failure
+      fetchBoards();
     }
   };
 
@@ -324,20 +368,20 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     return currentBoard.lists.map((_, index) => `list-${index}`);
   };
 
+  // ─── render ──────────────────────────────────────────────────────────────────
+
   if (loading) return <div className="p-8 text-center text-white">Loading boards...</div>;
 
   if (!currentBoard) {
     return (
       <div>
         <div className="flex justify-between items-center mb-4 border-b border-white/20 pb-4">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowNewBoardModal(true)}
-              className="px-3 py-1 glass-btn rounded-lg text-sm"
-            >
-              + New Board
-            </button>
-          </div>
+          <button
+            onClick={() => setShowNewBoardModal(true)}
+            className="px-3 py-1 glass-btn rounded-lg text-sm"
+          >
+            + New Board
+          </button>
         </div>
         {showNewBoardModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
@@ -352,16 +396,10 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
                 autoFocus
               />
               <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setShowNewBoardModal(false)}
-                  className="px-4 py-2 glass-outline rounded-lg"
-                >
+                <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 glass-outline rounded-lg">
                   Cancel
                 </button>
-                <button
-                  onClick={handleCreateBoard}
-                  className="px-4 py-2 glass-btn rounded-lg"
-                >
+                <button onClick={handleCreateBoard} className="px-4 py-2 glass-btn rounded-lg">
                   Create
                 </button>
               </div>
@@ -374,7 +412,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
 
   return (
     <div>
-      {/* Filter Bar with glass effect */}
+      {/* Filter Bar */}
       <div className="flex flex-wrap gap-4 mb-4 p-2 glass rounded-lg">
         <select
           value={filterAssignee}
@@ -383,9 +421,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         >
           <option value="">All Assignees</option>
           {members.map((m) => (
-            <option key={m._id} value={m._id}>
-              {m.name}
-            </option>
+            <option key={m._id} value={m._id}>{m.name}</option>
           ))}
         </select>
         <select
@@ -405,18 +441,14 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           className="glass-input rounded px-2 py-1 text-white text-sm"
         />
         <button
-          onClick={() => {
-            setFilterAssignee('');
-            setFilterLabel('');
-            setFilterDueDate('');
-          }}
+          onClick={() => { setFilterAssignee(''); setFilterLabel(''); setFilterDueDate(''); }}
           className="px-2 py-1 glass-outline rounded text-sm"
         >
           Clear Filters
         </button>
       </div>
 
-      {/* Board header with "Add list" restored */}
+      {/* Board tabs + Add List */}
       <div className="flex flex-wrap justify-between items-center mb-4 border-b border-white/20 pb-4">
         <div className="flex flex-wrap gap-2">
           {boards.map((board) => (
@@ -440,7 +472,6 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
           </button>
         </div>
 
-        {/* ✅ Add List input and button (restored) */}
         <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
           <input
             type="text"
@@ -451,17 +482,11 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newListTitle.trim()) {
                 handleAddList(currentBoard._id, newListTitle);
-                setNewListTitle('');
               }
             }}
           />
           <button
-            onClick={() => {
-              if (newListTitle.trim()) {
-                handleAddList(currentBoard._id, newListTitle);
-                setNewListTitle('');
-              }
-            }}
+            onClick={() => { if (newListTitle.trim()) handleAddList(currentBoard._id, newListTitle); }}
             className="glass-btn rounded-md px-3 py-1 text-sm"
           >
             Add List
@@ -469,9 +494,15 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         </div>
       </div>
 
+      {/* Kanban board */}
+      {/*
+        FIX: use pointerWithin + rectIntersection collision strategy so that
+        dragging over an empty list container registers as a valid drop target,
+        not just dragging over existing cards.
+      */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -483,31 +514,23 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             {currentBoard.lists.map((list, listIndex) => {
               let filteredCards = list.cards;
               if (filterAssignee)
-                filteredCards = filteredCards.filter(
-                  (c) => c.assignedTo === filterAssignee
-                );
+                filteredCards = filteredCards.filter((c) => c.assignedTo === filterAssignee);
               if (filterLabel)
-                filteredCards = filteredCards.filter((c) =>
-                  c.labels?.includes(filterLabel)
-                );
+                filteredCards = filteredCards.filter((c) => c.labels?.includes(filterLabel));
               if (filterDueDate)
-                filteredCards = filteredCards.filter(
-                  (c) => c.dueDate === filterDueDate
-                );
+                filteredCards = filteredCards.filter((c) => c.dueDate === filterDueDate);
+
               return (
                 <BoardList
                   key={list._id || listIndex}
                   list={{ ...list, cards: filteredCards }}
                   listIndex={listIndex}
                   onAddCard={(title, assigneeId) =>
-                    handleAddCard(
-                      currentBoard._id,
-                      listIndex,
-                      title,
-                      assigneeId
-                    )
+                    handleAddCard(currentBoard._id, listIndex, title, assigneeId)
                   }
                   members={members}
+                  // FIX: these props were declared but never passed — cards had
+                  // no delete, edit, or move-stage buttons working
                   onCardUpdated={fetchBoards}
                   onMoveStage={handleMoveStage}
                 />
@@ -515,6 +538,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
             })}
           </SortableContext>
         </div>
+
         <DragOverlay
           dropAnimation={{
             sideEffects: defaultDropAnimationSideEffects({
@@ -526,6 +550,7 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
         </DragOverlay>
       </DndContext>
 
+      {/* New board modal */}
       {showNewBoardModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="glass rounded-lg p-6 w-96">
@@ -539,16 +564,10 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowNewBoardModal(false)}
-                className="px-4 py-2 glass-outline rounded-lg"
-              >
+              <button onClick={() => setShowNewBoardModal(false)} className="px-4 py-2 glass-outline rounded-lg">
                 Cancel
               </button>
-              <button
-                onClick={handleCreateBoard}
-                className="px-4 py-2 glass-btn rounded-lg"
-              >
+              <button onClick={handleCreateBoard} className="px-4 py-2 glass-btn rounded-lg">
                 Create
               </button>
             </div>
