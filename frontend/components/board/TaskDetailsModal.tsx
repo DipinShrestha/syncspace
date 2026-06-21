@@ -74,7 +74,7 @@ export default function TaskDetailsModal({ isOpen, onClose, card, members, onCar
   useEffect(() => {
     if (!isOpen) return;
     setLoadingC(true);
-    fetch(`${API}/api/cards/${card._id}/comments`, {
+    fetch(`${API}/cards/${card._id}/comments`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     })
       .then((r) => r.json())
@@ -96,7 +96,7 @@ export default function TaskDetailsModal({ isOpen, onClose, card, members, onCar
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch(`${API}/api/upload`, {
+      const res = await fetch(`${API}/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: formData,
@@ -142,7 +142,7 @@ export default function TaskDetailsModal({ isOpen, onClose, card, members, onCar
     if (!commentText.trim()) return;
     setPosting(true);
     try {
-      const res = await fetch(`${API}/api/cards/${card._id}/comments`, {
+      const res = await fetch(`${API}/cards/${card._id}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ export default function TaskDetailsModal({ isOpen, onClose, card, members, onCar
   // ── delete own comment ────────────────────────────────────────────────────
   const handleDeleteComment = async (commentId: string) => {
     try {
-      await fetch(`${API}/api/cards/${card._id}/comments/${commentId}`, {
+      await fetch(`${API}/cards/${card._id}/comments/${commentId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });

@@ -21,7 +21,7 @@ export default function DocumentEditor({ document, onUpdate }: DocumentEditorPro
   const editor = useEditor({
     extensions: [StarterKit, Underline, TextAlign.configure({ types: ['heading', 'paragraph'] }), Placeholder.configure({ placeholder: 'Start writing...' })],
     content: document.content ? JSON.parse(document.content) : '<p></p>',
-    editorProps: { attributes: { class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4' } },
+    editorProps: { attributes: { class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4 text-gray-900' } },
   });
 
  const autoSave = useCallback(async (content: unknown) => {
@@ -59,7 +59,7 @@ export default function DocumentEditor({ document, onUpdate }: DocumentEditorPro
   return (
     <div className="flex-1 flex flex-col bg-white rounded-lg shadow p-4">
       <div className="border-b pb-3 mb-3">
-        <input type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={saveTitle} className="text-2xl font-bold w-full border-none focus:outline-none focus:ring-0 p-0" placeholder="Document title" />
+        <input type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={saveTitle} className="text-2xl font-bold w-full border-none focus:outline-none focus:ring-0 p-0 text-gray-900" placeholder="Document title" />
         <div className="text-xs text-gray-400 mt-1">{saving ? 'Saving...' : lastSaved ? `Saved at ${lastSaved.toLocaleTimeString()}` : 'Auto-save enabled'}</div>
       </div>
       <div className="flex flex-wrap gap-1 border-b pb-2 mb-2">
