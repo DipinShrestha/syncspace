@@ -2,6 +2,7 @@
 const Board = require('../models/Board');
 const Card = require('../models/Card');
 const Workspace = require('../models/Workspace');
+const { getIO } = require('../socketInstance');
 
 // @desc    Create a new board inside a workspace
 // @route   POST /api/boards
@@ -246,6 +247,21 @@ const updateCard = async (req, res) => {
     if (list !== undefined) card.list = list;
 
     const updated = await card.save();
+
+    // Push the change live to everyone viewing this workspace (best-effort —
+    // never let a socket hiccup break the actual save response).
+    try {
+      const io = getIO();
+      if (io) {
+        const board = await Board.findById(updated.board).select('workspace');
+        if (board) {
+          io.to(board.workspace.toString()).emit('card-updated', updated);
+        }
+      }
+    } catch (emitErr) {
+      console.error('card-updated emit failed:', emitErr.message);
+    }
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ message: error.message });

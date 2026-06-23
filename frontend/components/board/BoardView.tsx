@@ -81,6 +81,33 @@ export default function BoardView({ workspaceId }: BoardViewProps) {
     }
   }, [workspaceId]);
 
+  // Join the workspace's socket room and listen for live card updates
+  // (e.g. another member uploading a file attachment) so everyone viewing
+  // this board sees the change without needing to refresh.
+  useEffect(() => {
+    if (!socket || !workspaceId || !user?._id) return;
+
+    socket.emit('join-workspace', workspaceId, user._id, (_res: unknown) => {
+      // no-op callback; join-workspace already logs/handles errors server-side
+    });
+
+    const handleCardUpdated = (updatedCard: Card) => {
+      const patchLists = (lists: List[]) =>
+        lists.map((list) => ({
+          ...list,
+          cards: list.cards.map((c) => (c._id === updatedCard._id ? updatedCard : c)),
+        }));
+
+      setCurrentBoard((prev) => (prev ? { ...prev, lists: patchLists(prev.lists) } : prev));
+      setBoards((prev) => prev.map((b) => ({ ...b, lists: patchLists(b.lists) })));
+    };
+
+    socket.on('card-updated', handleCardUpdated);
+    return () => {
+      socket.off('card-updated', handleCardUpdated);
+    };
+  }, [socket, workspaceId, user?._id]);
+
   const fetchMembers = async () => {
     try {
       const res = await getWorkspaceById(workspaceId);

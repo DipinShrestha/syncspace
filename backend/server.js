@@ -15,6 +15,7 @@ const documentRoutes  = require('./routes/documentRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const uploadRoute     = require('./routes/uploadRoute');   // NEW
 const chatSocket      = require('./sockets/chatSocket');
+const { setIO }       = require('./socketInstance');
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ app.use((err, _req, res, _next) => {
 
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+setIO(io); // make io available to controllers (e.g. boardController emits card-updated)
 chatSocket(io);
 
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
